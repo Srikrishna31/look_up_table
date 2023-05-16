@@ -24,6 +24,18 @@ pub struct OneDLookUpTable<const N: usize> {
 
 impl<const N: usize> OneDLookUpTable<N> {
     pub fn new(x: [f64; N], y: [f64; N]) -> Result<OneDLookUpTable<N>, String> {
+        // TODO: To explore if this constraint can be expressed in generics to move this error to
+        // compile time.
+        if x.len() < 2 {
+            return Err("At least two values should be provided".to_string());
+        }
+
+        if x.iter().any(|v| v.is_nan() || v.is_infinite())
+            || y.iter().any(|v| v.is_nan() || v.is_infinite())
+        {
+            return Err("Cannot create a Lookup Table containing NaNs or Infinities".to_string());
+        }
+
         if !x.windows(2).all(|c| c[1] - c[0] > EPSILON) {
             return Err("X values should be in strictly increasing order".to_string());
         }
