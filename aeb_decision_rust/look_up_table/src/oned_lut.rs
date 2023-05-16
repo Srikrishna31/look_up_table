@@ -20,23 +20,20 @@ impl<const N: usize> OneDLookUpTable<N> {
 
         Ok(OneDLookUpTable { x, y, cache: RefCell::new(HashMap::new()) })
     }
-}
 
-impl<const N: usize> Index<f64> for OneDLookUpTable<N> {
-    type Output = f64;
-
-    fn index(&self, index: f64) -> &Self::Output {
+    pub fn get(&self, index: f64) -> f64 {
+        // Due to index traits requirements of returning references, we cannot use it to overload.
         if index < self.x[0] {
-            return &self.y[0];
+            return self.y[0];
         }
 
         if index > self.x[N] {
-            return &self.y[N];
+            return self.y[N];
         }
 
         let ind = index.integer_decode();
         if self.cache.borrow().contains_key(&ind) {
-            return &self.cache.borrow().get(&ind).unwrap();
+            return *self.cache.borrow().get(&ind).unwrap();
         }
 
         let lub = match self
@@ -55,6 +52,6 @@ impl<const N: usize> Index<f64> for OneDLookUpTable<N> {
 
         self.cache.borrow_mut().insert(ind, y);
 
-        self.cache.borrow().get(&ind).unwrap()
+        *self.cache.borrow().get(&ind).unwrap()
     }
 }
