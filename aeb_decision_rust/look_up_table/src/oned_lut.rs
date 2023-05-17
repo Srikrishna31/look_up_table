@@ -75,13 +75,13 @@ impl<const N: usize> OneDLookUpTable<N> {
     /// value is present in the array, it directly returns the corresponding y value without any
     /// interpolation. If the `index` value lies outside the range, then it clamps the values to the
     /// boundary values.
-    pub fn get(&self, index: f64) -> f64 {
+    pub fn get(&self, index: &f64) -> f64 {
         // Due to index traits requirements of returning references, we cannot use it to overload.
-        if index < self.x[0] {
+        if *index < self.x[0] {
             return self.y[0];
         }
 
-        if index > self.x[N - 1] {
+        if *index > self.x[N - 1] {
             return self.y[N - 1];
         }
 
@@ -95,7 +95,7 @@ impl<const N: usize> OneDLookUpTable<N> {
 
         let lub = match self
             .x
-            .binary_search_by(|val| val.partial_cmp(&index).unwrap())
+            .binary_search_by(|val| val.partial_cmp(index).unwrap())
         {
             // perform interpolation only when the value is not found.
             Ok(ind) => return self.y[ind],

@@ -32,7 +32,7 @@ fn when_x_value_is_to_the_right_of_interval_return_last_value_in_y_table(
     simple_increasing_function: IncrFunc,
 ) {
     let expected = 5.0;
-    let actual = simple_increasing_function.get(10.0);
+    let actual = simple_increasing_function.get(&10.0);
 
     assert!((actual - expected).abs() < f64::EPSILON);
 }
@@ -42,7 +42,7 @@ fn when_x_value_is_to_the_left_of_interval_return_first_value_in_y_table(
     simple_increasing_function: IncrFunc,
 ) {
     let expected = 1.0;
-    let actual = simple_increasing_function.get(-1.0);
+    let actual = simple_increasing_function.get(&-1.0);
 
     assert!((actual - expected).abs() < f64::EPSILON);
 }
@@ -52,7 +52,7 @@ fn when_x_value_is_in_interval_return_appropriate_first_value_in_y_table(
     simple_increasing_function: IncrFunc,
 ) {
     let expected = 3.0;
-    let actual = simple_increasing_function.get(3.0);
+    let actual = simple_increasing_function.get(&3.0);
 
     assert!((actual - expected).abs() < f64::EPSILON);
 }
@@ -88,7 +88,7 @@ fn when_x_is_in_range_return_interpolated_value(
     #[case] input: f64,
     #[case] expected: f64,
 ) {
-    let actual = random_function.get(input);
+    let actual = random_function.get(&input);
     assert!((actual - expected).abs() < 0.0001);
 }
 
