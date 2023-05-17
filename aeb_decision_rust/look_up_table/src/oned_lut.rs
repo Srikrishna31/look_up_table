@@ -15,7 +15,9 @@ type Key = (u64, i16, i8);
 
 const EPSILON: f64 = 0.00000001;
 
-/// Linear interpolation with nearest neighbor extrapolation when index is outside support region.
+/// Linear interpolation with nearest neighbor extrapolation when index is outside support region,
+/// and with Caching support to enable fast lookups on same values.
+#[derive(Debug)]
 pub struct OneDLookUpTable<const N: usize> {
     x: [f64; N],
     y: [f64; N],
@@ -23,6 +25,28 @@ pub struct OneDLookUpTable<const N: usize> {
 }
 
 impl<const N: usize> OneDLookUpTable<N> {
+    /// Constructs a `OneDLookUpTable` object, given the input arrays `x` and `y` modelling the sample
+    /// points of a uni-variate function.
+    /// If the `x` values are not sorted in ascending order:
+    /// ```
+    ///  use look_up_table::OneDLookUpTable;
+    ///  let lut = OneDLookUpTable::new([3.0, 1.0, 2.0], [1.0;3]);
+    ///  assert_eq!(lut.err().unwrap(), "X values should be in strictly increasing order")
+    /// ```
+    ///
+    /// If the `x` or `y` values contain NANs or Inifinities
+    /// ```
+    ///  use look_up_table::OneDLookUpTable;
+    ///  let lut = OneDLookUpTable::new([f64::NAN, 1.0, 2.0], [f64::NEG_INFINITY;3]);
+    ///  assert_eq!(lut.err().unwrap(), "Cannot create a Lookup Table containing NaNs or Infinities")
+    /// ```
+    ///
+    /// If the `x` or `y` values are arrays of 1 value:
+    /// ```
+    ///  use look_up_table::OneDLookUpTable;
+    ///  let lut = OneDLookUpTable::new([1.0], [f64::NEG_INFINITY]);
+    ///  assert_eq!(lut.err().unwrap(), "At least two values should be provided")
+    /// ```
     pub fn new(x: [f64; N], y: [f64; N]) -> Result<OneDLookUpTable<N>, String> {
         // TODO: To explore if this constraint can be expressed in generics to move this error to
         // compile time.
@@ -47,6 +71,10 @@ impl<const N: usize> OneDLookUpTable<N> {
         })
     }
 
+    /// Returns an interpolated value for the given `index` or x value. If the `index`
+    /// value is present in the array, it directly returns the corresponding y value without any
+    /// interpolation. If the `index` value lies outside the range, then it clamps the values to the
+    /// boundary values.
     pub fn get(&self, index: f64) -> f64 {
         // Due to index traits requirements of returning references, we cannot use it to overload.
         if index < self.x[0] {
@@ -57,6 +85,9 @@ impl<const N: usize> OneDLookUpTable<N> {
             return self.y[N - 1];
         }
 
+        // There could be a possibility that the values which are very close in real number line to
+        // have different bit patterns, so this code would do a full interpolation for nearly identical
+        // value lookups.
         let ind = index.integer_decode();
         if self.cache.borrow().contains_key(&ind) {
             return *self.cache.borrow().get(&ind).unwrap();

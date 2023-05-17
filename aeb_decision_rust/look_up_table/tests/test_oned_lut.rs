@@ -1,5 +1,10 @@
+// #![feature(test)]
+// extern crate test;
+// use test::Bencher;
+
 use look_up_table::OneDLookUpTable;
 use rstest::{fixture, rstest};
+
 type IncrFunc = OneDLookUpTable<5>;
 
 #[fixture]
@@ -78,17 +83,21 @@ fn when_x_or_y_values_contain_nan_or_infinities_dont_construct_object(
 #[rstest]
 #[case(10.0, 8.25)]
 #[case(16.0, 2.5714)]
-fn when_x_is_in_range_return_interpolated_value(random_function: RandFunc, #[case] input: f64, #[case] expected: f64) {
+fn when_x_is_in_range_return_interpolated_value(
+    random_function: RandFunc,
+    #[case] input: f64,
+    #[case] expected: f64,
+) {
     let actual = random_function.get(input);
     assert!((actual - expected).abs() < 0.0001);
 }
 
-
-#[bench]
-fn bench_when_same_x_value_is_queried_lookup_should_be_constant(b: &mut Bencher) {
-    // The idea behind this test is that, when we query the same value again and again, the lookup
-    // cost should approach constant value.
-    let mut rand_func = random_function();
-
-    b.iter(move || rand_func.get(16.0));
-}
+// Currently benchmarking is not supported on stable channel.
+// #[bench]
+// fn bench_when_same_x_value_is_queried_lookup_should_be_constant(b: &mut Bencher) {
+//     // The idea behind this test is that, when we query the same value again and again, the lookup
+//     // cost should approach constant value.
+//     let mut rand_func = random_function();
+//
+//     b.iter(move || rand_func.get(16.0));
+// }
