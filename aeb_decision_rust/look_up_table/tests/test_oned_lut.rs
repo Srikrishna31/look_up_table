@@ -1,6 +1,5 @@
 use look_up_table::OneDLookUpTable;
 use rstest::{fixture, rstest};
-
 type IncrFunc = OneDLookUpTable<5>;
 
 #[fixture]
@@ -56,13 +55,13 @@ fn when_x_value_is_in_interval_return_appropriate_first_value_in_y_table(
 #[test]
 #[should_panic(expected = "X values should be in strictly increasing order")]
 fn when_x_values_are_same_dont_construct_object() {
-    let _ = OneDLookUpTable::new([2.0; 6], [2.0; 6]).unwrap();
+    OneDLookUpTable::new([2.0; 6], [2.0; 6]).unwrap();
 }
 
 #[test]
 #[should_panic(expected = "At least two values should be provided")]
 fn when_given_single_x_value_dont_construct_object() {
-    let _ = OneDLookUpTable::new([2.6; 1], [3.2; 1]).unwrap();
+    OneDLookUpTable::new([2.6; 1], [3.2; 1]).unwrap();
 }
 
 #[rstest]
@@ -73,5 +72,23 @@ fn when_x_or_y_values_contain_nan_or_infinities_dont_construct_object(
     #[values([f64::NAN;5], [0.0, 0.0, 0.0, f64::NAN, 0.05], [0.0, 1.5, f64::INFINITY, f64::INFINITY, f64::NAN])]
     y: [f64; 5],
 ) {
-    let _ = OneDLookUpTable::new(x, y).unwrap();
+    OneDLookUpTable::new(x, y).unwrap();
+}
+
+#[rstest]
+#[case(10.0, 8.25)]
+#[case(16.0, 2.5714)]
+fn when_x_is_in_range_return_interpolated_value(random_function: RandFunc, #[case] input: f64, #[case] expected: f64) {
+    let actual = random_function.get(input);
+    assert!((actual - expected).abs() < 0.0001);
+}
+
+
+#[bench]
+fn bench_when_same_x_value_is_queried_lookup_should_be_constant(b: &mut Bencher) {
+    // The idea behind this test is that, when we query the same value again and again, the lookup
+    // cost should approach constant value.
+    let mut rand_func = random_function();
+
+    b.iter(move || rand_func.get(16.0));
 }
