@@ -50,7 +50,7 @@ impl<const N: usize> OneDLookUpTable<N> {
     pub fn new(x: [f64; N], y: [f64; N]) -> Result<OneDLookUpTable<N>, String> {
         // TODO: To explore if this constraint can be expressed in generics to move this error to
         // compile time.
-        if x.len() < 2 {
+        if N < 2 {
             return Err("At least two values should be provided".to_string());
         }
 

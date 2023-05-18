@@ -33,6 +33,7 @@ impl<const N: usize> TwoDLookUpTable<N> {
         {
             return Err("X and Y values should be in strictly increasing order".to_string());
         }
+
         Ok(TwoDLookUpTable {
             x,
             y,
@@ -50,7 +51,34 @@ impl<const N: usize> TwoDLookUpTable<N> {
     }
 
     pub fn get(&self, x: f64, y: f64) -> f64 {
+        // First do the cache lookup
+        let x_bits = x.integer_decode();
+        let y_bits = y.integer_decode();
+
+        if self.cache.borrow().contains_key(&(x_bits, y_bits)) {
+            return *self.cache.borrow().get(&(x_bits, y_bits)).unwrap();
+        }
+
         // if one of the indices is out of range, then perform interpolation only in that direction.
+        match (x > )
         0.0
+    }
+
+    fn unidirectional_interpolation(y: &f64, ys: &[f64; N]) -> f64 {
+        if *y < ys[0] {
+            return ys[0];
+        }
+
+        if *y > ys[N - 1] {
+            return ys[N - 1];
+        }
+
+        let lub = match ys.binary_search_by(|ydash| ydash.partial_cmp(y).unwrap()) {
+            Ok(ind) => return *ys[ind],
+            Err(ind) => ind,
+        };
+        let prev = lub - 1;
+
+        let alpha =
     }
 }
