@@ -1,27 +1,31 @@
 use num::Float;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use crate::EPSILON;
 
 type Key = ((u64, i16, i8), (u64, i16, i8));
-const EPSILON: f64 = 0.00000001;
+
+
+/// Type alias for a surface - a 2D array, where M is the height and N is the width.
+pub type SurfaceType<const M: usize, const N: usize> = [[f64;N]; M];
 
 #[derive(Debug)]
-pub struct TwoDLookUpTable<const N: usize> {
-    x: [f64; N],
+pub struct TwoDLookUpTable<const M: usize, const N: usize> {
+    x: [f64; M],
     y: [f64; N],
-    surface: [[f64; N]; N],
+    surface: SurfaceType<M, N>,
     cache: RefCell<HashMap<Key, f64>>,
 }
 
-impl<const N: usize> TwoDLookUpTable<N> {
+impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
     pub fn new(
-        x: [f64; N],
+        x: [f64; M],
         y: [f64; N],
-        surface: [[f64; N]; N],
-    ) -> Result<TwoDLookUpTable<N>, String> {
+        surface: SurfaceType<M, N>,
+    ) -> Result<TwoDLookUpTable<M, N>, String> {
         // TODO: explore if this constraint can be expressed in generics to move this check to compile time
-        if N < 2 {
-            return Err("At least two values should be provided".to_string());
+        if N < 2 || M < 2{
+            return Err("At least two values should be provided for x and y axes".to_string());
         }
 
         if Self::check_nans_and_infinities(&x, &y, &surface) {
@@ -42,7 +46,7 @@ impl<const N: usize> TwoDLookUpTable<N> {
         })
     }
 
-    fn check_nans_and_infinities(x: &[f64; N], y: &[f64; N], surface: &[[f64; N]; N]) -> bool {
+    fn check_nans_and_infinities(x: &[f64; M], y: &[f64; N], surface: &SurfaceType<M, N>) -> bool {
         x.iter().any(|v| v.is_nan() || v.is_infinite())
             || y.iter().any(|v| v.is_nan() || v.is_infinite())
             || surface

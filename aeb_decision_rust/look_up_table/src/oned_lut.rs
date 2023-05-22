@@ -10,10 +10,9 @@
 use num::Float;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use crate::EPSILON;
 
 type Key = (u64, i16, i8);
-
-const EPSILON: f64 = 0.00000001;
 
 /// Linear interpolation with nearest neighbor extrapolation when index is outside support region,
 /// and with Caching support to enable fast lookups on same values.
