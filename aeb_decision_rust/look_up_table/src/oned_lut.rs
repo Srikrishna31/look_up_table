@@ -7,10 +7,10 @@
 //! it is linear to get better performance) of the values is performed to get an estimate of the
 //! actual function. In practice this gives a reasonable approximation of the function.
 //! Ofcourse when the values are out of bounds, then the last values are returned always.
+use crate::EPSILON;
 use num::Float;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use crate::EPSILON;
 
 type Key = (u64, i16, i8);
 
