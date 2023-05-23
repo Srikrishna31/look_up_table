@@ -1,3 +1,4 @@
+//! Two Dimensional Look Up Table
 use crate::EPSILON;
 use num::Float;
 use std::cell::RefCell;
@@ -55,11 +56,10 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
 
     pub fn get(&self, x: &f64, y: &f64) -> f64 {
         // First do the cache lookup
-        let x_bits = x.integer_decode();
-        let y_bits = y.integer_decode();
+        let key = (x.integer_decode(), y.integer_decode());
 
-        if self.cache.borrow().contains_key(&(x_bits, y_bits)) {
-            return *self.cache.borrow().get(&(x_bits, y_bits)).unwrap();
+        if self.cache.borrow().contains_key(&key) {
+            return *self.cache.borrow().get(&key).unwrap();
         }
 
         // if one of the indices is out of range, then perform interpolation only in that direction.
@@ -99,7 +99,7 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
         let fq21 = self.surface[x2_ind][y1_ind];
         let fq22 = self.surface[x2_ind][y2_ind];
 
-        if fq11 == fq22 {
+        let z = if fq11 == fq22 {
             fq11
         } else if fq11 == fq21 {
             let alpha = (x - x1) / (x2 - x1);
@@ -110,13 +110,17 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
 
             fq11 + alpha * fq21
         } else {
-            let alphax = (x - x1) / (x2 - x1);
-            let alphay = (y - y1) / (y2 - y1);
+            let alpha_x = (x - x1) / (x2 - x1);
+            let alpha_y = (y - y1) / (y2 - y1);
 
-            let fxy1 = fq11 + alphax * fq21;
-            let fxy2 = fq12 + alphax * fq22;
+            let fxy1 = fq11 + alpha_x * fq21;
+            let fxy2 = fq12 + alpha_x * fq22;
 
-            fxy1 + alphay * fxy2
-        }
+            fxy1 + alpha_y * fxy2
+        };
+
+        self.cache.borrow_mut().insert(key, z);
+
+        *self.cache.borrow().get(&key).unwrap()
     }
 }
