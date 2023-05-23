@@ -54,6 +54,19 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
                 .any(|row| row.iter().any(|v| v.is_nan() || v.is_infinite()))
     }
 
+    fn get_indices(v: &f64, vs: &[f64]) -> (usize, usize) {
+        if *v < vs[0] {
+            (0, 0)
+        } else if *v > vs[vs.len() - 1] {
+            (vs.len() - 1, vs.len() - 1)
+        } else {
+            match vs.binary_search_by(|val| val.partial_cmp(v).unwrap()) {
+                Ok(ind) => (ind - 1, ind),
+                Err(ind) => (ind - 1, ind),
+            }
+        }
+    }
+
     pub fn get(&self, x: &f64, y: &f64) -> f64 {
         // First do the cache lookup
         let key = (x.integer_decode(), y.integer_decode());
@@ -62,32 +75,8 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
             return *self.cache.borrow().get(&key).unwrap();
         }
 
-        // if one of the indices is out of range, then perform interpolation only in that direction.
-        let (x1_ind, x2_ind) = {
-            if *x < self.x[0] {
-                (0, 0)
-            } else if *x > self.x[M - 1] {
-                (M - 1, M - 1)
-            } else {
-                match self.x.binary_search_by(|val| val.partial_cmp(x).unwrap()) {
-                    Ok(ind) => (ind - 1, ind),
-                    Err(ind) => (ind - 1, ind),
-                }
-            }
-        };
-
-        let (y1_ind, y2_ind) = {
-            if *y < self.y[0] {
-                (0, 0)
-            } else if *y > self.y[N - 1] {
-                (N - 1, N - 1)
-            } else {
-                match self.y.binary_search_by(|val| val.partial_cmp(y).unwrap()) {
-                    Ok(ind) => (ind - 1, ind),
-                    Err(ind) => (ind - 1, ind),
-                }
-            }
-        };
+        let (x1_ind, x2_ind) = Self::get_indices(x, &self.x);
+        let (y1_ind, y2_ind) = Self::get_indices(y, &self.y);
         let (x1, x2, y1, y2) = (
             self.x[x1_ind],
             self.x[x2_ind],
@@ -99,6 +88,9 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
         let fq21 = self.surface[x2_ind][y1_ind];
         let fq22 = self.surface[x2_ind][y2_ind];
 
+        // if both the indices are out of range, then return the corner point
+        // if one of the indices is out of range, then perform interpolation only in other direction.
+        // else perform interpolation on both the axes.
         let z = if fq11 == fq22 {
             fq11
         } else if fq11 == fq21 {
