@@ -33,7 +33,7 @@ impl<const N: usize> OneDLookUpTable<N> {
     ///  assert_eq!(lut.err().unwrap(), "X values should be in strictly increasing order")
     /// ```
     ///
-    /// If the `x` or `y` values contain NANs or Inifinities
+    /// If the `x` or `y` values contain NANs or Infinities
     /// ```
     ///  use look_up_table::OneDLookUpTable;
     ///  let lut = OneDLookUpTable::new([f64::NAN, 1.0, 2.0], [f64::NEG_INFINITY;3]);
