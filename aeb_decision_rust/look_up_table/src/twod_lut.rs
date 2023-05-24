@@ -22,9 +22,9 @@ pub type SurfaceType<const M: usize, const N: usize> = [[f64; N]; M];
 /// N is the number of columns and signifies width
 #[derive(Debug)]
 pub struct TwoDLookUpTable<const M: usize, const N: usize> {
-    x: [f64; M],    // Breakpoints/sample points on x-axis
-    y: [f64; N],    // Breakpoints/sample points on y-axis
-    surface: SurfaceType<M, N>, // Corresponding function values for x and y indices.
+    x: [f64; M],                       // Breakpoints/sample points on x-axis
+    y: [f64; N],                       // Breakpoints/sample points on y-axis
+    surface: SurfaceType<M, N>,        // Corresponding function values for x and y indices.
     cache: RefCell<HashMap<Key, f64>>, // A cache to support fast lookup for frequently used values.
 }
 
@@ -130,10 +130,10 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
         );
 
         // These represent the four corners of the quad, within which the interpolation is to be done.
-        let fq11 = self.surface[x1_ind][y1_ind];
-        let fq12 = self.surface[x1_ind][y2_ind];
-        let fq21 = self.surface[x2_ind][y1_ind];
-        let fq22 = self.surface[x2_ind][y2_ind];
+        let fq11 = self.surface[y1_ind][x1_ind];
+        let fq12 = self.surface[y1_ind][x2_ind];
+        let fq21 = self.surface[y2_ind][x1_ind];
+        let fq22 = self.surface[y2_ind][x2_ind];
 
         // if both the indices are out of range, then return the corner point
         // if one of the indices is out of range or maps to an exact breakpoint,
