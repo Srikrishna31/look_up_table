@@ -64,3 +64,4 @@ fn when_x_y_values_are_within_bounds_then_perform_bilinear_interpolation() {
 
     assert!((actual - expected).abs() < 0.00001);
 }
+
