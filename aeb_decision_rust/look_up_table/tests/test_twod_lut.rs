@@ -53,3 +53,14 @@ fn when_x_or_y_values_are_single_element_arrays_dont_construct_object() {
 fn when_x_or_y_surface_values_contain_nans_or_infinities_dont_construct_object() {
     TwoDLookUpTable::new([f64::NAN, 1.0, 2.0], [f64::NEG_INFINITY; 3], [[1.0; 3]; 3]).unwrap();
 }
+
+#[test]
+fn when_x_y_values_are_within_bounds_then_perform_bilinear_interpolation() {
+    let lut =
+        TwoDLookUpTable::new([14.0, 15.0], [20.0, 21.0], [[91.0, 210.0], [162.0, 95.0]]).unwrap();
+
+    let expected = 146.1;
+    let actual = lut.get(&14.5, &20.2);
+
+    assert!((actual - expected).abs() < 0.00001);
+}
