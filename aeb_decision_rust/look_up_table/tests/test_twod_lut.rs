@@ -59,9 +59,10 @@ fn when_x_y_values_are_within_bounds_then_perform_bilinear_interpolation() {
     let lut =
         TwoDLookUpTable::new([14.0, 15.0], [20.0, 21.0], [[91.0, 210.0], [162.0, 95.0]]).unwrap();
 
-    let expected = 146.1;
+    let expected = 131.7;
     let actual = lut.get(&14.5, &20.2);
 
     assert!((actual - expected).abs() < 0.00001);
 }
 
+// TODO: Write tests for interpolation in single direction.

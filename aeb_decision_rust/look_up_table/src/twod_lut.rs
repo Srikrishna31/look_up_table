@@ -144,20 +144,19 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
         } else if fq11 == fq21 {
             let alpha = (x - x1) / (x2 - x1);
 
-            fq11 + alpha * fq12
+            fq11 + alpha * (fq12 - fq11)
         } else if fq11 == fq12 {
             let alpha = (y - y1) / (y2 - y1);
 
-            fq11 + alpha * fq21
+            fq11 + alpha * (fq21 - fq11)
         } else {
             let alpha_x = (x - x1) / (x2 - x1);
             let alpha_y = (y - y1) / (y2 - y1);
 
-            let fxy1 = fq11 + alpha_x * fq21;
-            let fxy2 = fq12 + alpha_x * fq22;
+            let fxy1 = fq11 + alpha_x * (fq21 - fq11);
+            let fxy2 = fq12 + alpha_x * (fq22 - fq12);
 
-            // fxy1 + (fxy2 - fxy1) * alpha_y
-            fxy1 * alpha_y + fxy2 * (1.0 - alpha_y)
+            fxy1 + (fxy2 - fxy1) * alpha_y
         };
 
         // store the value in cache before returning, to speedup look up process in the future.
