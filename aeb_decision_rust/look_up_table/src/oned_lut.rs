@@ -14,8 +14,52 @@ use std::collections::HashMap;
 
 type Key = (u64, i16, i8);
 
+fn is_object_constructible(xs: &[f64], ys: &[f64]) -> Result<bool, String> {
+    if xs.len() < 2 || ys.len() < 2 {
+        return Err("At least two values should be provided".to_string());
+    }
+
+    if xs.iter().any(|v| v.is_nan() || v.is_infinite())
+        || ys.iter().any(|v| v.is_nan() || v.is_infinite())
+    {
+        return Err("Cannot create a Lookup Table containing NaNs or Infinities".to_string());
+    }
+
+    if !xs.windows(2).all(|c| c[1] - c[0] > EPSILON) {
+        return Err("X values should be in strictly increasing order".to_string());
+    }
+
+    Ok(true)
+}
+
+fn interpolate(x: &f64, xs: &[f64], ys: &[f64]) -> f64 {
+    // Due to index traits requirements of returning references, we cannot use it to overload.
+    if *x < xs[0] {
+        return ys[0];
+    }
+
+    if *x > xs[xs.len() - 1] {
+        return ys[ys.len() - 1];
+    }
+
+    let lub = match xs.binary_search_by(|val| val.partial_cmp(x).unwrap()) {
+        // perform interpolation only when the value is not found.
+        Ok(ind) => return ys[ind],
+        Err(ind) => ind,
+    };
+    let prev = lub - 1;
+    let alpha = (x - xs[prev]) / (xs[lub] - xs[prev]);
+
+    let y1 = &ys[prev];
+    let y2 = &ys[lub];
+
+    y1 + alpha * (y2 - y1)
+}
+
 /// Linear interpolation with nearest neighbor extrapolation when index is outside support region,
 /// and with Caching support to enable fast lookups on same values.
+/// This structure is an owning structure in that, it owns the array values passed into it. It is
+/// useful for defining LUTs at compile time.
 #[derive(Debug)]
 pub struct OneDLookUpTable<const N: usize> {
     x: [f64; N],
@@ -47,23 +91,7 @@ impl<const N: usize> OneDLookUpTable<N> {
     ///  assert_eq!(lut.err().unwrap(), "At least two values should be provided")
     /// ```
     pub fn new(x: [f64; N], y: [f64; N]) -> Result<OneDLookUpTable<N>, String> {
-        // TODO: To explore if this constraint can be expressed in generics to move this error to
-        // compile time.
-        if N < 2 {
-            return Err("At least two values should be provided".to_string());
-        }
-
-        if x.iter().any(|v| v.is_nan() || v.is_infinite())
-            || y.iter().any(|v| v.is_nan() || v.is_infinite())
-        {
-            return Err("Cannot create a Lookup Table containing NaNs or Infinities".to_string());
-        }
-
-        if !x.windows(2).all(|c| c[1] - c[0] > EPSILON) {
-            return Err("X values should be in strictly increasing order".to_string());
-        }
-
-        Ok(OneDLookUpTable {
+        is_object_constructible(&x, &y).map(|_| OneDLookUpTable {
             x,
             y,
             cache: RefCell::new(HashMap::new()),
@@ -75,15 +103,6 @@ impl<const N: usize> OneDLookUpTable<N> {
     /// interpolation. If the `index` value lies outside the range, then it clamps the values to the
     /// boundary values.
     pub fn get(&self, index: &f64) -> f64 {
-        // Due to index traits requirements of returning references, we cannot use it to overload.
-        if *index < self.x[0] {
-            return self.y[0];
-        }
-
-        if *index > self.x[N - 1] {
-            return self.y[N - 1];
-        }
-
         // There could be a possibility that the values which are very close in real number line to
         // have different bit patterns, so this code would do a full interpolation for nearly identical
         // value lookups.
@@ -92,20 +111,42 @@ impl<const N: usize> OneDLookUpTable<N> {
             return *self.cache.borrow().get(&ind).unwrap();
         }
 
-        let lub = match self
-            .x
-            .binary_search_by(|val| val.partial_cmp(index).unwrap())
-        {
-            // perform interpolation only when the value is not found.
-            Ok(ind) => return self.y[ind],
-            Err(ind) => ind,
-        };
-        let prev = lub - 1;
-        let alpha = (index - self.x[prev]) / (self.x[lub] - self.x[prev]);
+        let y = interpolate(index, &self.x, &self.y);
 
-        let y1 = &self.y[prev];
-        let y2 = &self.y[lub];
-        let y = y1 + alpha * (y2 - y1);
+        self.cache.borrow_mut().insert(ind, y);
+
+        *self.cache.borrow().get(&ind).unwrap()
+    }
+}
+
+/// This struct allows reference arrays/slices to be used as lookup functions, which can be defined
+/// at runtime or borrow the slices from other enclosing objects.
+#[derive(Debug)]
+pub struct OneDLookUpTableRef<'a, 'b> {
+    xs: &'a [f64],
+    ys: &'b [f64],
+    cache: RefCell<HashMap<Key, f64>>,
+}
+
+impl<'a, 'b> OneDLookUpTableRef<'a, 'b> {
+    pub fn new(xs: &'a [f64], ys: &'b [f64]) -> Result<OneDLookUpTableRef<'a, 'b>, String> {
+        is_object_constructible(xs, ys).map(|_| OneDLookUpTableRef {
+            xs,
+            ys,
+            cache: RefCell::new(HashMap::new()),
+        })
+    }
+
+    pub fn get(&self, index: &f64) -> f64 {
+        // There could be a possibility that the values which are very close in real number line to
+        // have different bit patterns, so this code would do a full interpolation for nearly identical
+        // value lookups.
+        let ind = index.integer_decode();
+        if self.cache.borrow().contains_key(&ind) {
+            return *self.cache.borrow().get(&ind).unwrap();
+        }
+
+        let y = interpolate(index, self.xs, self.ys);
 
         self.cache.borrow_mut().insert(ind, y);
 
