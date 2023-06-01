@@ -56,7 +56,9 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
         ys: [f64; N],
         surface: SurfaceType<M, N>,
     ) -> Result<TwoDLookUpTable<M, N>, String> {
-        is_object_constructible(&xs, &ys, surface.as_ref()).map(|_| TwoDLookUpTable {
+        let surf: Vec<Vec<f64>> = surface.iter().map(|row| row.to_vec()).collect();
+        // let surf: &[&[f64]] = &surface.map(|row:[f64; N]| row.as_slice());
+        is_object_constructible(&xs, &ys, surf.as_slice()).map(|_| TwoDLookUpTable {
             x: xs,
             y: ys,
             surface,
@@ -78,7 +80,8 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
             return *self.cache.borrow().get(&key).unwrap();
         }
 
-        let z = interpolate(x, y, &self.x, &self.y, &self.surface);
+        let surf: &[&[f64]] = &self.surface.map(|row: [f64; N]| row.as_slice());
+        let z = interpolate(x, y, &self.x, &self.y, surf);
 
         // store the value in cache before returning, to speedup look up process in the future.
         self.cache.borrow_mut().insert(key, z);
