@@ -52,57 +52,16 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
     ///  assert_eq!(lut.err().unwrap(), "At least two values should be provided for x and y axes")
     /// ```
     pub fn new(
-        x: [f64; M],
-        y: [f64; N],
+        xs: [f64; M],
+        ys: [f64; N],
         surface: SurfaceType<M, N>,
     ) -> Result<TwoDLookUpTable<M, N>, String> {
-        // TODO: explore if this constraint can be expressed in generics to move this check to compile time
-        if N < 2 || M < 2 {
-            return Err("At least two values should be provided for x and y axes".to_string());
-        }
-
-        if Self::check_nans_and_infinities(&x, &y, &surface) {
-            return Err("Cannot create a Lookup Table containing NaNs or Infinities".to_string());
-        }
-
-        if !x.windows(2).all(|c| c[1] - c[0] > EPSILON)
-            || !y.windows(2).all(|c| c[1] - c[0] > EPSILON)
-        {
-            return Err("X and Y values should be in strictly increasing order".to_string());
-        }
-
-        Ok(TwoDLookUpTable {
-            x,
-            y,
+        is_object_constructible(&xs, &ys, &surface).map(|_| TwoDLookUpTable {
+            x: xs,
+            y: ys,
             surface,
             cache: RefCell::new(HashMap::new()),
         })
-    }
-
-    #[inline]
-    fn check_nans_and_infinities(x: &[f64; M], y: &[f64; N], surface: &SurfaceType<M, N>) -> bool {
-        x.iter().any(|v| v.is_nan() || v.is_infinite())
-            || y.iter().any(|v| v.is_nan() || v.is_infinite())
-            || surface
-                .iter()
-                .any(|row| row.iter().any(|v| v.is_nan() || v.is_infinite()))
-    }
-
-    /// Given an index value, try to find the lower and upper bound indices and return them.
-    /// If the index is out of bounds, return both values as boundary values. If the index directly
-    /// matches the values present in the array, then return the same value as lower and upper bounds.
-    #[inline]
-    fn get_indices(v: &f64, vs: &[f64]) -> (usize, usize) {
-        if *v < vs[0] {
-            (0, 0)
-        } else if *v > vs[vs.len() - 1] {
-            (vs.len() - 1, vs.len() - 1)
-        } else {
-            match vs.binary_search_by(|val| val.partial_cmp(v).unwrap()) {
-                Ok(ind) => (ind, ind),
-                Err(ind) => (ind - 1, ind),
-            }
-        }
     }
 
     /// Returns an interpolated value for the given `x` and `y` indices. If the values are directly
@@ -119,49 +78,102 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
             return *self.cache.borrow().get(&key).unwrap();
         }
 
-        // Retrieve the lower and upper bound indices for x and y axes.
-        let (x1_ind, x2_ind) = Self::get_indices(x, &self.x);
-        let (y1_ind, y2_ind) = Self::get_indices(y, &self.y);
-        let (x1, x2, y1, y2) = (
-            self.x[x1_ind],
-            self.x[x2_ind],
-            self.y[y1_ind],
-            self.y[y2_ind],
-        );
-
-        // These represent the four corners of the quad, within which the interpolation is to be done.
-        let fq11 = self.surface[y1_ind][x1_ind];
-        let fq12 = self.surface[y1_ind][x2_ind];
-        let fq21 = self.surface[y2_ind][x1_ind];
-        let fq22 = self.surface[y2_ind][x2_ind];
-
-        // if both the indices are out of range, then return the corner point
-        // if one of the indices is out of range or maps to an exact breakpoint,
-        // then perform interpolation only in other direction.
-        // else perform interpolation on both the axes.
-        let z = if fq11 == fq22 {
-            fq11
-        } else if fq11 == fq21 {
-            let alpha = (x - x1) / (x2 - x1);
-
-            fq11 + alpha * (fq12 - fq11)
-        } else if fq11 == fq12 {
-            let alpha = (y - y1) / (y2 - y1);
-
-            fq11 + alpha * (fq21 - fq11)
-        } else {
-            let alpha_x = (x - x1) / (x2 - x1);
-            let alpha_y = (y - y1) / (y2 - y1);
-
-            let fxy1 = fq11 + alpha_x * (fq21 - fq11);
-            let fxy2 = fq12 + alpha_x * (fq22 - fq12);
-
-            fxy1 + (fxy2 - fxy1) * alpha_y
-        };
+        let z = interpolate(x, y, &self.x, &self.y, &self.surface);
 
         // store the value in cache before returning, to speedup look up process in the future.
         self.cache.borrow_mut().insert(key, z);
 
         *self.cache.borrow().get(&key).unwrap()
+    }
+}
+
+#[inline]
+fn check_nans_and_infinities<const N: usize>(xs: &[f64], ys: &[f64], surface: &[[f64; N]]) -> bool {
+    let check_nan_infinity = |v: &f64| v.is_nan() || v.is_infinite();
+
+    xs.iter().any(check_nan_infinity)
+        || ys.iter().any(check_nan_infinity)
+        || surface.iter().any(|row| row.iter().any(check_nan_infinity))
+}
+
+fn is_object_constructible<const N: usize>(
+    xs: &[f64],
+    ys: &[f64],
+    surface: &[[f64; N]],
+) -> Result<bool, String> {
+    if xs.len() < 2 || ys.len() < 2 {
+        return Err("At least two values should be provided for x and y axes".to_string());
+    }
+
+    if check_nans_and_infinities(xs, ys, surface) {
+        return Err("Cannot create a Lookup Table containing NaNs or Infinities".to_string());
+    }
+
+    if !xs.windows(2).all(|c| c[1] - c[0] > EPSILON)
+        || !ys.windows(2).all(|c| c[1] - c[0] > EPSILON)
+    {
+        return Err("X and Y values should be in strictly increasing order".to_string());
+    }
+
+    Ok(true)
+}
+
+/// Given an index value, try to find the lower and upper bound indices and return them.
+/// If the index is out of bounds, return both values as boundary values. If the index directly
+/// matches the values present in the array, then return the same value as lower and upper bounds.
+#[inline]
+fn get_indices(v: &f64, vs: &[f64]) -> (usize, usize) {
+    if *v < vs[0] {
+        (0, 0)
+    } else if *v > vs[vs.len() - 1] {
+        (vs.len() - 1, vs.len() - 1)
+    } else {
+        match vs.binary_search_by(|val| val.partial_cmp(v).unwrap()) {
+            Ok(ind) => (ind, ind),
+            Err(ind) => (ind - 1, ind),
+        }
+    }
+}
+
+fn interpolate<const N: usize>(
+    x: &f64,
+    y: &f64,
+    xs: &[f64],
+    ys: &[f64],
+    surface: &[[f64; N]],
+) -> f64 {
+    // Retrieve the lower and upper bound indices for x and y axes.
+    let (x1_ind, x2_ind) = get_indices(x, xs);
+    let (y1_ind, y2_ind) = get_indices(y, ys);
+    let (x1, x2, y1, y2) = (xs[x1_ind], xs[x2_ind], ys[y1_ind], ys[y2_ind]);
+
+    // These represent the four corners of the quad, within which the interpolation is to be done.
+    let fq11 = surface[y1_ind][x1_ind];
+    let fq12 = surface[y1_ind][x2_ind];
+    let fq21 = surface[y2_ind][x1_ind];
+    let fq22 = surface[y2_ind][x2_ind];
+
+    // if both the indices are out of range, then return the corner point
+    // if one of the indices is out of range or maps to an exact breakpoint,
+    // then perform interpolation only in other direction.
+    // else perform interpolation on both the axes.
+    if fq11 == fq22 {
+        fq11
+    } else if fq11 == fq21 {
+        let alpha = (x - x1) / (x2 - x1);
+
+        fq11 + alpha * (fq12 - fq11)
+    } else if fq11 == fq12 {
+        let alpha = (y - y1) / (y2 - y1);
+
+        fq11 + alpha * (fq21 - fq11)
+    } else {
+        let alpha_x = (x - x1) / (x2 - x1);
+        let alpha_y = (y - y1) / (y2 - y1);
+
+        let fxy1 = fq11 + alpha_x * (fq21 - fq11);
+        let fxy2 = fq12 + alpha_x * (fq22 - fq12);
+
+        fxy1 + (fxy2 - fxy1) * alpha_y
     }
 }
