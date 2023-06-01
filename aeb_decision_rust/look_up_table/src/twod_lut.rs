@@ -56,7 +56,7 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
         ys: [f64; N],
         surface: SurfaceType<M, N>,
     ) -> Result<TwoDLookUpTable<M, N>, String> {
-        is_object_constructible(&xs, &ys, &surface).map(|_| TwoDLookUpTable {
+        is_object_constructible(&xs, &ys, surface.as_ref()).map(|_| TwoDLookUpTable {
             x: xs,
             y: ys,
             surface,
@@ -88,7 +88,7 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
 }
 
 #[inline]
-fn check_nans_and_infinities<const N: usize>(xs: &[f64], ys: &[f64], surface: &[[f64; N]]) -> bool {
+fn check_nans_and_infinities(xs: &[f64], ys: &[f64], surface: &[&[f64]]) -> bool {
     let check_nan_infinity = |v: &f64| v.is_nan() || v.is_infinite();
 
     xs.iter().any(check_nan_infinity)
@@ -96,11 +96,7 @@ fn check_nans_and_infinities<const N: usize>(xs: &[f64], ys: &[f64], surface: &[
         || surface.iter().any(|row| row.iter().any(check_nan_infinity))
 }
 
-fn is_object_constructible<const N: usize>(
-    xs: &[f64],
-    ys: &[f64],
-    surface: &[[f64; N]],
-) -> Result<bool, String> {
+fn is_object_constructible(xs: &[f64], ys: &[f64], surface: &[&[f64]]) -> Result<bool, String> {
     if xs.len() < 2 || ys.len() < 2 {
         return Err("At least two values should be provided for x and y axes".to_string());
     }
@@ -135,13 +131,7 @@ fn get_indices(v: &f64, vs: &[f64]) -> (usize, usize) {
     }
 }
 
-fn interpolate<const N: usize>(
-    x: &f64,
-    y: &f64,
-    xs: &[f64],
-    ys: &[f64],
-    surface: &[[f64; N]],
-) -> f64 {
+fn interpolate(x: &f64, y: &f64, xs: &[f64], ys: &[f64], surface: &[&[f64]]) -> f64 {
     // Retrieve the lower and upper bound indices for x and y axes.
     let (x1_ind, x2_ind) = get_indices(x, xs);
     let (y1_ind, y2_ind) = get_indices(y, ys);
@@ -175,5 +165,40 @@ fn interpolate<const N: usize>(
         let fxy2 = fq12 + alpha_x * (fq22 - fq12);
 
         fxy1 + (fxy2 - fxy1) * alpha_y
+    }
+}
+
+#[derive(Debug)]
+pub struct TwoDLookUpTableRef<'a, 'b, 'c> {
+    xs: &'a [f64],
+    ys: &'b [f64],
+    surface: Box<&'c [&'c [f64]]>,
+    cache: RefCell<HashMap<Key, f64>>,
+}
+
+impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
+    pub fn new(xs: &'a [f64], ys: &'b [f64], surface: &'c [&'c [f64]]) -> Result<Self, String> {
+        is_object_constructible(xs, ys, surface.into()).map(|_| TwoDLookUpTableRef {
+            xs,
+            ys,
+            surface: Box::new(surface),
+            cache: RefCell::new(HashMap::new()),
+        })
+    }
+
+    pub fn get(&self, x: &f64, y: &f64) -> f64 {
+        // First do the cache lookup
+        let key = (x.integer_decode(), y.integer_decode());
+
+        if self.cache.borrow().contains_key(&key) {
+            return *self.cache.borrow().get(&key).unwrap();
+        }
+
+        let z = interpolate(x, y, self.xs, self.ys, &self.surface);
+
+        // store the value in cache before returning, to speedup look up process in the future.
+        self.cache.borrow_mut().insert(key, z);
+
+        *self.cache.borrow().get(&key).unwrap()
     }
 }
