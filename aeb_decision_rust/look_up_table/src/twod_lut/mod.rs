@@ -9,7 +9,9 @@
 
 mod interpolation;
 
-use crate::twod_lut::interpolation::{interpolate, is_object_constructible};
+use crate::twod_lut::interpolation::{
+    interpolate, interpolate_dynamic, is_object_constructible, is_object_constructible_dynamic,
+};
 use num::Float;
 use std::cell::RefCell;
 use std::collections::HashMap;
@@ -59,9 +61,7 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
         ys: [f64; N],
         surface: SurfaceType<M, N>,
     ) -> Result<TwoDLookUpTable<M, N>, String> {
-        let surf: Vec<Vec<f64>> = surface.iter().map(|row| row.to_vec()).collect();
-        // let surf: &[&[f64]] = &surface.map(|row:[f64; N]| row.as_slice());
-        is_object_constructible(&xs, &ys, surf.as_slice()).map(|_| TwoDLookUpTable {
+        is_object_constructible(&xs, &ys, &surface).map(|_| TwoDLookUpTable {
             x: xs,
             y: ys,
             surface,
@@ -83,8 +83,7 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
             return *self.cache.borrow().get(&key).unwrap();
         }
 
-        let surf: &[&[f64]] = &self.surface.map(|row: [f64; N]| row.as_slice());
-        let z = interpolate(x, y, &self.x, &self.y, surf);
+        let z = interpolate(x, y, &self.x, &self.y, &self.surface);
 
         // store the value in cache before returning, to speedup look up process in the future.
         self.cache.borrow_mut().insert(key, z);
@@ -103,7 +102,7 @@ pub struct TwoDLookUpTableRef<'a, 'b, 'c> {
 
 impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
     pub fn new(xs: &'a [f64], ys: &'b [f64], surface: &'c [&'c [f64]]) -> Result<Self, String> {
-        is_object_constructible(xs, ys, surface.into()).map(|_| TwoDLookUpTableRef {
+        is_object_constructible_dynamic(xs, ys, surface).map(|_| TwoDLookUpTableRef {
             xs,
             ys,
             surface: Box::new(surface),
@@ -119,7 +118,7 @@ impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
             return *self.cache.borrow().get(&key).unwrap();
         }
 
-        let z = interpolate(x, y, self.xs, self.ys, &self.surface);
+        let z = interpolate_dynamic(x, y, self.xs, self.ys, &self.surface);
 
         // store the value in cache before returning, to speedup look up process in the future.
         self.cache.borrow_mut().insert(key, z);
