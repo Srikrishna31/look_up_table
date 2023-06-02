@@ -15,6 +15,7 @@ use crate::twod_lut::interpolation::{
 use num::Float;
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::borrow::Cow;
 
 type Key = ((u64, i16, i8), (u64, i16, i8));
 
@@ -124,5 +125,23 @@ impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
         self.cache.borrow_mut().insert(key, z);
 
         *self.cache.borrow().get(&key).unwrap()
+    }
+}
+
+#[derive(Debug)]
+pub struct TwoDLookUpTableCow<'a, 'b, 'c> {
+    twod_lut: TwoDLookUpTableRef<'a, 'b, 'c>,
+    vec_surface: Vec<&'c [f64]>,
+}
+
+impl <'a, 'b, 'c> TwoDLookUpTableCow<'a, 'b, 'c> {
+    pub fn new(xs: &'a [f64], ys: &'b [f64], surface: &'c[Cow<&'c [f64]>]) -> Result<Self, String> {
+        let mut vec = Vec::new();
+        surface.iter().for_each(|v| vec.push(&v[0..v.len()]));
+
+        is_object_constructible_dynamic(xs, ys, &vec).map(|_| TwoDLookUpTableCow{
+            vec_surface: vec,
+            twod_lut: TwoDLookUpTableRef::new(xs, ys, &vec).unwrap(),
+        })
     }
 }
