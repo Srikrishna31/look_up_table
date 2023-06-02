@@ -10,12 +10,13 @@
 mod interpolation;
 
 use crate::twod_lut::interpolation::{
-    interpolate, interpolate_dynamic, is_object_constructible, is_object_constructible_dynamic,
+    interpolate, interpolate_dynamic, interpolate_dynamic_cow, is_object_constructible,
+    is_object_constructible_dynamic,
 };
 use num::Float;
+use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::borrow::Cow;
 
 type Key = ((u64, i16, i8), (u64, i16, i8));
 
@@ -97,7 +98,7 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
 pub struct TwoDLookUpTableRef<'a, 'b, 'c> {
     xs: &'a [f64],
     ys: &'b [f64],
-    surface: Box<&'c [&'c [f64]]>,
+    surface: &'c [&'c [f64]],
     cache: RefCell<HashMap<Key, f64>>,
 }
 
@@ -106,7 +107,7 @@ impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
         is_object_constructible_dynamic(xs, ys, surface).map(|_| TwoDLookUpTableRef {
             xs,
             ys,
-            surface: Box::new(surface),
+            surface,
             cache: RefCell::new(HashMap::new()),
         })
     }
@@ -119,7 +120,7 @@ impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
             return *self.cache.borrow().get(&key).unwrap();
         }
 
-        let z = interpolate_dynamic(x, y, self.xs, self.ys, &self.surface);
+        let z = interpolate_dynamic(x, y, self.xs, self.ys, self.surface);
 
         // store the value in cache before returning, to speedup look up process in the future.
         self.cache.borrow_mut().insert(key, z);
@@ -129,19 +130,43 @@ impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
 }
 
 #[derive(Debug)]
-pub struct TwoDLookUpTableCow<'a, 'b, 'c> {
-    twod_lut: TwoDLookUpTableRef<'a, 'b, 'c>,
-    vec_surface: Vec<&'c [f64]>,
+pub struct TwoDLookUpTableCow<'a, 'b> {
+    xs: &'a [f64],
+    ys: &'b [f64],
+    surface: &'static Cow<'static, [Cow<'static, [f64]>]>,
+    cache: RefCell<HashMap<Key, f64>>,
 }
 
-impl <'a, 'b, 'c> TwoDLookUpTableCow<'a, 'b, 'c> {
-    pub fn new(xs: &'a [f64], ys: &'b [f64], surface: &'c[Cow<&'c [f64]>]) -> Result<Self, String> {
+impl<'a, 'b> TwoDLookUpTableCow<'a, 'b> {
+    pub fn new(
+        xs: &'a [f64],
+        ys: &'b [f64],
+        surface: &'static Cow<'static, [Cow<'static, [f64]>]>,
+    ) -> Result<Self, String> {
         let mut vec = Vec::new();
         surface.iter().for_each(|v| vec.push(&v[0..v.len()]));
 
-        is_object_constructible_dynamic(xs, ys, &vec).map(|_| TwoDLookUpTableCow{
-            vec_surface: vec,
-            twod_lut: TwoDLookUpTableRef::new(xs, ys, &vec).unwrap(),
+        is_object_constructible_dynamic(xs, ys, &vec).map(|_| TwoDLookUpTableCow {
+            xs,
+            ys,
+            surface,
+            cache: RefCell::new(HashMap::new()),
         })
+    }
+
+    pub fn get(&self, x: &f64, y: &f64) -> f64 {
+        // First do the cache lookup
+        let key = (x.integer_decode(), y.integer_decode());
+
+        if self.cache.borrow().contains_key(&key) {
+            return *self.cache.borrow().get(&key).unwrap();
+        }
+
+        let z = interpolate_dynamic_cow(x, y, self.xs, self.ys, self.surface);
+
+        // store the value in cache before returning, to speedup look up process in the future.
+        self.cache.borrow_mut().insert(key, z);
+
+        *self.cache.borrow().get(&key).unwrap()
     }
 }

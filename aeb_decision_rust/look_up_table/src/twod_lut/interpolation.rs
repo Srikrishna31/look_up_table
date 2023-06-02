@@ -1,5 +1,6 @@
 use crate::twod_lut::SurfaceType;
 use crate::EPSILON;
+use std::borrow::Cow;
 use std::iter::Iterator;
 
 // TODO: Try to unify the two copies of the functions by using an Iterator implementation
@@ -124,6 +125,49 @@ pub(in crate::twod_lut) fn interpolate_dynamic(
     xs: &[f64],
     ys: &[f64],
     surface: &[&[f64]],
+) -> f64 {
+    // Retrieve the lower and upper bound indices for x and y axes.
+    let (x1_ind, x2_ind) = get_indices(x, xs);
+    let (y1_ind, y2_ind) = get_indices(y, ys);
+    let (x1, x2, y1, y2) = (xs[x1_ind], xs[x2_ind], ys[y1_ind], ys[y2_ind]);
+
+    // These represent the four corners of the quad, within which the interpolation is to be done.
+    let fq11 = surface[y1_ind][x1_ind];
+    let fq12 = surface[y1_ind][x2_ind];
+    let fq21 = surface[y2_ind][x1_ind];
+    let fq22 = surface[y2_ind][x2_ind];
+
+    // if both the indices are out of range, then return the corner point
+    // if one of the indices is out of range or maps to an exact breakpoint,
+    // then perform interpolation only in other direction.
+    // else perform interpolation on both the axes.
+    if fq11 == fq22 {
+        fq11
+    } else if fq11 == fq21 {
+        let alpha = (x - x1) / (x2 - x1);
+
+        fq11 + alpha * (fq12 - fq11)
+    } else if fq11 == fq12 {
+        let alpha = (y - y1) / (y2 - y1);
+
+        fq11 + alpha * (fq21 - fq11)
+    } else {
+        let alpha_x = (x - x1) / (x2 - x1);
+        let alpha_y = (y - y1) / (y2 - y1);
+
+        let fxy1 = fq11 + alpha_x * (fq21 - fq11);
+        let fxy2 = fq12 + alpha_x * (fq22 - fq12);
+
+        fxy1 + (fxy2 - fxy1) * alpha_y
+    }
+}
+
+pub(in crate::twod_lut) fn interpolate_dynamic_cow(
+    x: &f64,
+    y: &f64,
+    xs: &[f64],
+    ys: &[f64],
+    surface: &[Cow<'static, [f64]>],
 ) -> f64 {
     // Retrieve the lower and upper bound indices for x and y axes.
     let (x1_ind, x2_ind) = get_indices(x, xs);

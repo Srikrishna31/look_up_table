@@ -1,8 +1,7 @@
-use look_up_table::{TwoDLookUpTable, TwoDLookUpTableRef, TwoDLookUpTableCow};
-use rstest::{fixture, rstest};
 use calibration::{Calibration, CALIBRATION};
+use look_up_table::{TwoDLookUpTable, TwoDLookUpTableCow, TwoDLookUpTableRef};
+use rstest::{fixture, rstest};
 type IncrSurface = TwoDLookUpTable<5, 5>;
-
 
 #[fixture]
 fn simple_increasing_surface() -> IncrSurface {
@@ -71,7 +70,12 @@ fn when_values_test() {
     let lut = TwoDLookUpTableCow::new(
         &CALIBRATION.tuning.P_tng_x_AEB_str_PrmCarLat.GenPhase.RelAx,
         &CALIBRATION.tuning.P_tng_x_AEB_str_PrmCarLat.GenPhase.TarSpd,
-        &CALIBRATION.tuning.P_tng_x_AEB_str_PrmCarLat.GenPhase.OfsGainTarBrk,
-    ).unwrap();
+        &CALIBRATION
+            .tuning
+            .P_tng_x_AEB_str_PrmCarLat
+            .GenPhase
+            .OfsGainTarBrk,
+    )
+    .unwrap();
 }
 // TODO: Write tests for interpolation in single direction.
