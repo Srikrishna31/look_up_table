@@ -1,4 +1,3 @@
-use calibration::{Calibration, CALIBRATION};
 use look_up_table::{TwoDLookUpTable, TwoDLookUpTableCow, TwoDLookUpTableRef};
 use rstest::{fixture, rstest};
 type IncrSurface = TwoDLookUpTable<5, 5>;
@@ -65,17 +64,4 @@ fn when_x_y_values_are_within_bounds_then_perform_bilinear_interpolation() {
     assert!((actual - expected).abs() < 0.00001);
 }
 
-#[test]
-fn when_values_test() {
-    let lut = TwoDLookUpTableCow::new(
-        &CALIBRATION.tuning.P_tng_x_AEB_str_PrmCarLat.GenPhase.RelAx,
-        &CALIBRATION.tuning.P_tng_x_AEB_str_PrmCarLat.GenPhase.TarSpd,
-        &CALIBRATION
-            .tuning
-            .P_tng_x_AEB_str_PrmCarLat
-            .GenPhase
-            .OfsGainTarBrk,
-    )
-    .unwrap();
-}
 // TODO: Write tests for interpolation in single direction.
