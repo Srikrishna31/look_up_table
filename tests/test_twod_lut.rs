@@ -55,8 +55,7 @@ fn when_x_or_y_surface_values_contain_nans_or_infinities_dont_construct_object()
 
 #[test]
 fn when_x_y_values_are_within_bounds_then_perform_bilinear_interpolation() {
-    let lut =
-        TwoDLookUpTable::new([14.0, 15.0], [20.0, 21.0], [[91.0, 210.0], [162.0, 95.0]]).unwrap();
+    let lut = TwoDLookUpTable::new([14.0, 15.0], [20.0, 21.0], [[91.0, 210.0], [162.0, 95.0]]).unwrap();
 
     let expected = 131.7;
     let actual = lut.get(&14.5, &20.2);

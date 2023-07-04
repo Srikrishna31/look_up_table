@@ -23,9 +23,7 @@ pub(in crate::twod_lut) fn is_object_constructible<const M: usize, const N: usiz
         return Err("Cannot create a Lookup Table containing NaNs or Infinities".to_string());
     }
 
-    if !xs.windows(2).all(|c| c[1] - c[0] > EPSILON)
-        || !ys.windows(2).all(|c| c[1] - c[0] > EPSILON)
-    {
+    if !xs.windows(2).all(|c| c[1] - c[0] > EPSILON) || !ys.windows(2).all(|c| c[1] - c[0] > EPSILON) {
         return Err("X and Y values should be in strictly increasing order".to_string());
     }
 
@@ -50,9 +48,7 @@ pub(in crate::twod_lut) fn is_object_constructible_dynamic(
         return Err("Cannot create a Lookup Table containing NaNs or Infinities".to_string());
     }
 
-    if !xs.windows(2).all(|c| c[1] - c[0] > EPSILON)
-        || !ys.windows(2).all(|c| c[1] - c[0] > EPSILON)
-    {
+    if !xs.windows(2).all(|c| c[1] - c[0] > EPSILON) || !ys.windows(2).all(|c| c[1] - c[0] > EPSILON) {
         return Err("X and Y values should be in strictly increasing order".to_string());
     }
 
@@ -119,13 +115,7 @@ pub(in crate::twod_lut) fn interpolate<const M: usize, const N: usize>(
     }
 }
 
-pub(in crate::twod_lut) fn interpolate_dynamic(
-    x: &f64,
-    y: &f64,
-    xs: &[f64],
-    ys: &[f64],
-    surface: &[&[f64]],
-) -> f64 {
+pub(in crate::twod_lut) fn interpolate_dynamic(x: &f64, y: &f64, xs: &[f64], ys: &[f64], surface: &[&[f64]]) -> f64 {
     // Retrieve the lower and upper bound indices for x and y axes.
     let (x1_ind, x2_ind) = get_indices(x, xs);
     let (y1_ind, y2_ind) = get_indices(y, ys);

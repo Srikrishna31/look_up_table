@@ -7,9 +7,7 @@ pub(in crate::oned_lut) fn is_object_constructible(xs: &[f64], ys: &[f64]) -> Re
         return Err("At least two values should be provided".to_string());
     }
 
-    if xs.iter().any(|v| v.is_nan() || v.is_infinite())
-        || ys.iter().any(|v| v.is_nan() || v.is_infinite())
-    {
+    if xs.iter().any(|v| v.is_nan() || v.is_infinite()) || ys.iter().any(|v| v.is_nan() || v.is_infinite()) {
         return Err("Cannot create a Lookup Table containing NaNs or Infinities".to_string());
     }
 
