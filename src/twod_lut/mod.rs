@@ -10,7 +10,8 @@
 mod interpolation;
 
 use crate::twod_lut::interpolation::{
-    interpolate, interpolate_dynamic, interpolate_dynamic_cow, is_object_constructible, is_object_constructible_dynamic,
+    interpolate, interpolate_dynamic, interpolate_dynamic_cow, is_object_constructible_dynamic,
+    is_object_constructible_gen,
 };
 use num::Float;
 use std::borrow::Cow;
@@ -58,7 +59,7 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
     ///  assert_eq!(lut.err().unwrap(), "At least two values should be provided for x and y axes")
     /// ```
     pub fn new(xs: [f64; M], ys: [f64; N], surface: SurfaceType<M, N>) -> Result<TwoDLookUpTable<M, N>, String> {
-        is_object_constructible(&xs, &ys, &surface).map(|_| TwoDLookUpTable {
+        is_object_constructible_gen(&xs, &ys, &surface).map(|_| TwoDLookUpTable {
             x: xs,
             y: ys,
             surface,

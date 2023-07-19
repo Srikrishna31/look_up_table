@@ -1,42 +1,40 @@
 use crate::twod_lut::SurfaceType;
 use crate::EPSILON;
-use std::borrow::{Cow, Borrow};
-use std::iter::Iterator;
-use std::ops::Sub;
 use itertools::Itertools;
 use num::complex::ComplexFloat;
+use std::borrow::{Borrow, Cow};
+use std::iter::Iterator;
+use std::ops::Sub;
 
-pub (in crate::twod_lut) fn is_object_constructible_gen<I, J, K>(xs: I, ys: J, surface: K) -> Result<bool, String>
+pub(in crate::twod_lut) fn is_object_constructible_gen<I, J, K>(xs: I, ys: J, surface: K) -> Result<bool, String>
 where
-I: IntoIterator,
-J: IntoIterator,
-K: IntoIterator,
-I::Item: Borrow<f64> + Sub + Clone,  &'_ f64: From<<I as IntoIterator>::Item>, <<I as IntoIterator>::Item as Sub>::Output: PartialOrd<f64>,
-J::Item: Borrow<f64> + Sub + Clone,  <<J as IntoIterator>::Item as Sub>::Output: PartialOrd<f64>,
-K::Item: IntoIterator,
-<<K as IntoIterator>::Item as IntoIterator>::Item: Borrow<f64> + Sub + Clone,
+    I: IntoIterator + Copy,
+    J: IntoIterator + Copy,
+    K: IntoIterator + Copy,
+    I::Item: Borrow<f64> + Sub + Clone,
+    <<I as IntoIterator>::Item as Sub>::Output: PartialOrd<f64>,
+    J::Item: Borrow<f64> + Sub + Clone,
+    <<J as IntoIterator>::Item as Sub>::Output: PartialOrd<f64>,
+    K::Item: IntoIterator,
+    <<K as IntoIterator>::Item as IntoIterator>::Item: Borrow<f64> + Sub + Clone,
 {
-    if xs.into_iter().count() < 2 || xs.into_iter().count() < 2 {
+    if xs.into_iter().count() < 2 || ys.into_iter().count() < 2 {
         return Err("At least two values should be provided for x and y axes".to_string());
     }
 
-    let check_nan_infinity = |v: &f64| v.is_nan() || v.is_infinite();
-
-    if xs.into_iter().any(|v| {
-        let v: &f64 = <I::Item>::into(v);
-        v.is_infinite() || v.is_nan() })
-        || ys.into_iter().any(|v| {let v = v as &f64;
-        v.is_nan() || v.is_infinite()})
-        || surface.into_iter().any(|row| itertools::any(row.into_iter(),|v| {let v = v as &f64;
-        v.is_nan() || v.is_infinite()}))
+    if itertools::any(xs, |v| v.borrow().is_nan() || v.borrow().is_infinite())
+        || itertools::any(ys, |v| v.borrow().is_nan() || v.borrow().is_infinite())
+        || surface
+            .into_iter()
+            .any(|row| itertools::any(row, |v| v.borrow().is_nan() || v.borrow().is_infinite()))
     {
         return Err("Cannot create a Lookup Table containing NaNs or Infinities".to_string());
     }
 
-    let itxs = xs.into_iter().tuple_windows::<(_,_)>();
-    let itys = ys.into_iter().tuple_windows::<(_,_)>();
-    if !itertools::all(itxs, |(prev, curr)| curr - prev > EPSILON) ||
-        !itertools::all(itys, |(prev, curr)| curr - prev > EPSILON)
+    let itxs = xs.into_iter().tuple_windows::<(_, _)>();
+    let itys = ys.into_iter().tuple_windows::<(_, _)>();
+    if !itertools::all(itxs, |(prev, curr)| curr - prev > EPSILON)
+        || !itertools::all(itys, |(prev, curr)| curr - prev > EPSILON)
     {
         return Err("X and Y values should be in strictly increasing order".to_string());
     }
@@ -46,30 +44,6 @@ K::Item: IntoIterator,
 
 // TODO: Try to unify the two copies of the functions by using an Iterator implementation
 // or some other similar construct.
-pub(in crate::twod_lut) fn is_object_constructible<const M: usize, const N: usize>(
-    xs: &[f64; M],
-    ys: &[f64; N],
-    surface: &SurfaceType<M, N>,
-) -> Result<bool, String> {
-    if xs.len() < 2 || ys.len() < 2 {
-        return Err("At least two values should be provided for x and y axes".to_string());
-    }
-
-    let check_nan_infinity = |v: &f64| v.is_nan() || v.is_infinite();
-
-    if xs.iter().any(check_nan_infinity)
-        || ys.iter().any(check_nan_infinity)
-        || surface.iter().any(|row| row.iter().any(check_nan_infinity))
-    {
-        return Err("Cannot create a Lookup Table containing NaNs or Infinities".to_string());
-    }
-
-    if !xs.windows(2).all(|c| c[1] - c[0] > EPSILON) || !ys.windows(2).all(|c| c[1] - c[0] > EPSILON) {
-        return Err("X and Y values should be in strictly increasing order".to_string());
-    }
-
-    Ok(true)
-}
 
 pub(in crate::twod_lut) fn is_object_constructible_dynamic(
     xs: &[f64],
