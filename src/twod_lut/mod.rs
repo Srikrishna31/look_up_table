@@ -147,7 +147,7 @@ impl<'a, 'b> TwoDLookUpTableCow<'a, 'b> {
         // Since we are dealing with dynamic slices, align the xs and ys if the lengths are not aligned
         // according to the surface dimensions. If the lengths are same, then we assume that the xs and
         // ys are passed in the correct order.
-        is_object_constructible_dynamic(xs, ys, &vec).map(|_| TwoDLookUpTableCow {
+        is_object_constructible_gen(xs.into_iter(), ys.into_iter(), vec.into_iter()).map(|_| TwoDLookUpTableCow {
             xs,
             ys,
             surface,
@@ -177,3 +177,5 @@ impl<'a, 'b> TwoDLookUpTableCow<'a, 'b> {
         *self.cache.borrow().get(&key).unwrap()
     }
 }
+
+

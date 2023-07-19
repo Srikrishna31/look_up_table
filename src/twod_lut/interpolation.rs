@@ -8,9 +8,9 @@ use std::ops::Sub;
 
 pub(in crate::twod_lut) fn is_object_constructible_gen<I, J, K>(xs: I, ys: J, surface: K) -> Result<bool, String>
 where
-    I: IntoIterator + Copy,
-    J: IntoIterator + Copy,
-    K: IntoIterator + Copy,
+    I: IntoIterator + Clone,
+    J: IntoIterator + Clone,
+    K: IntoIterator + Clone,
     I::Item: Borrow<f64> + Sub + Clone,
     <<I as IntoIterator>::Item as Sub>::Output: PartialOrd<f64>,
     J::Item: Borrow<f64> + Sub + Clone,
@@ -18,13 +18,13 @@ where
     K::Item: IntoIterator,
     <<K as IntoIterator>::Item as IntoIterator>::Item: Borrow<f64> + Sub + Clone,
 {
-    if xs.into_iter().count() < 2 || ys.into_iter().count() < 2 {
+    if xs.clone().into_iter().count() < 2 || ys.clone().into_iter().count() < 2 {
         return Err("At least two values should be provided for x and y axes".to_string());
     }
 
-    if itertools::any(xs, |v| v.borrow().is_nan() || v.borrow().is_infinite())
-        || itertools::any(ys, |v| v.borrow().is_nan() || v.borrow().is_infinite())
-        || surface
+    if itertools::any(xs.clone(), |v| v.borrow().is_nan() || v.borrow().is_infinite())
+        || itertools::any(ys.clone(), |v| v.borrow().is_nan() || v.borrow().is_infinite())
+        || surface.clone()
             .into_iter()
             .any(|row| itertools::any(row, |v| v.borrow().is_nan() || v.borrow().is_infinite()))
     {
