@@ -1,7 +1,48 @@
 use crate::twod_lut::SurfaceType;
 use crate::EPSILON;
-use std::borrow::Cow;
+use std::borrow::{Cow, Borrow};
 use std::iter::Iterator;
+use std::ops::Sub;
+use itertools::Itertools;
+use num::complex::ComplexFloat;
+
+pub (in crate::twod_lut) fn is_object_constructible_gen<I, J, K>(xs: I, ys: J, surface: K) -> Result<bool, String>
+where
+I: IntoIterator,
+J: IntoIterator,
+K: IntoIterator,
+I::Item: Borrow<f64> + Sub + Clone,  &'_ f64: From<<I as IntoIterator>::Item>, <<I as IntoIterator>::Item as Sub>::Output: PartialOrd<f64>,
+J::Item: Borrow<f64> + Sub + Clone,  <<J as IntoIterator>::Item as Sub>::Output: PartialOrd<f64>,
+K::Item: IntoIterator,
+<<K as IntoIterator>::Item as IntoIterator>::Item: Borrow<f64> + Sub + Clone,
+{
+    if xs.into_iter().count() < 2 || xs.into_iter().count() < 2 {
+        return Err("At least two values should be provided for x and y axes".to_string());
+    }
+
+    let check_nan_infinity = |v: &f64| v.is_nan() || v.is_infinite();
+
+    if xs.into_iter().any(|v| {
+        let v: &f64 = <I::Item>::into(v);
+        v.is_infinite() || v.is_nan() })
+        || ys.into_iter().any(|v| {let v = v as &f64;
+        v.is_nan() || v.is_infinite()})
+        || surface.into_iter().any(|row| itertools::any(row.into_iter(),|v| {let v = v as &f64;
+        v.is_nan() || v.is_infinite()}))
+    {
+        return Err("Cannot create a Lookup Table containing NaNs or Infinities".to_string());
+    }
+
+    let itxs = xs.into_iter().tuple_windows::<(_,_)>();
+    let itys = ys.into_iter().tuple_windows::<(_,_)>();
+    if !itertools::all(itxs, |(prev, curr)| curr - prev > EPSILON) ||
+        !itertools::all(itys, |(prev, curr)| curr - prev > EPSILON)
+    {
+        return Err("X and Y values should be in strictly increasing order".to_string());
+    }
+
+    Ok(true)
+}
 
 // TODO: Try to unify the two copies of the functions by using an Iterator implementation
 // or some other similar construct.
