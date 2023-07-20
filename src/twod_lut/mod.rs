@@ -9,7 +9,7 @@
 
 mod interpolation;
 
-use crate::twod_lut::interpolation::{interpolate_dynamic, is_object_constructible};
+use crate::twod_lut::interpolation::{interpolate, is_object_constructible};
 use num::Float;
 use std::borrow::Cow;
 use std::cell::RefCell;
@@ -86,7 +86,7 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
             return *self.cache.borrow().get(&key).unwrap();
         }
 
-        let z = interpolate_dynamic(x, y, &self.x, &self.y, self);
+        let z = interpolate(x, y, &self.x, &self.y, self);
 
         // store the value in cache before returning, to speedup look up process in the future.
         self.cache.borrow_mut().insert(key, z);
@@ -107,59 +107,16 @@ impl SurfaceValueGetter for TwoDLookUpTableRef<'_, '_, '_> {
     }
 }
 
-impl SurfaceValueGetter for TwoDLookUpTableCow<'_, '_> {
-    fn get(&self, x: usize, y: usize) -> f64 {
-        self.surface[x][y]
-    }
-}
-
 #[derive(Debug)]
 pub struct TwoDLookUpTableRef<'a, 'b, 'c> {
     xs: &'a [f64],
     ys: &'b [f64],
-    surface: &'c [&'c [f64]],
-    cache: RefCell<HashMap<Key, f64>>,
-}
-
-impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
-    pub fn new(xs: &'a [f64], ys: &'b [f64], surface: &'c [&'c [f64]]) -> Result<Self, String> {
-        let mut vec = Vec::with_capacity(surface.len());
-        surface.iter().for_each(|v| vec.push(&v[0..v.len()]));
-        is_object_constructible(xs.iter(), ys.iter(), vec.into_iter()).map(|_| TwoDLookUpTableRef {
-            xs,
-            ys,
-            surface,
-            cache: RefCell::new(HashMap::new()),
-        })
-    }
-
-    pub fn get(&self, x: &f64, y: &f64) -> f64 {
-        // First do the cache lookup
-        let key = (x.integer_decode(), y.integer_decode());
-
-        if self.cache.borrow().contains_key(&key) {
-            return *self.cache.borrow().get(&key).unwrap();
-        }
-
-        let z = interpolate_dynamic(x, y, self.xs, self.ys, self);
-
-        // store the value in cache before returning, to speedup look up process in the future.
-        self.cache.borrow_mut().insert(key, z);
-
-        *self.cache.borrow().get(&key).unwrap()
-    }
-}
-
-#[derive(Debug)]
-pub struct TwoDLookUpTableCow<'a, 'b> {
-    xs: &'a [f64],
-    ys: &'b [f64],
-    surface: Vec<&'static [f64]>,
+    surface: Vec<&'c [f64]>,
     cache: RefCell<HashMap<Key, f64>>,
     xy_swapped: bool,
 }
 
-impl<'a, 'b> TwoDLookUpTableCow<'a, 'b> {
+impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
     #[allow(clippy::ptr_arg)]
     pub fn new(
         xs: &'a [f64],
@@ -172,7 +129,23 @@ impl<'a, 'b> TwoDLookUpTableCow<'a, 'b> {
         // Since we are dealing with dynamic slices, align the xs and ys if the lengths are not aligned
         // according to the surface dimensions. If the lengths are same, then we assume that the xs and
         // ys are passed in the correct order.
-        is_object_constructible(xs.iter(), ys.iter(), vec.clone().into_iter()).map(|_| TwoDLookUpTableCow {
+        is_object_constructible(xs.iter(), ys.iter(), vec.clone().into_iter()).map(|_| TwoDLookUpTableRef {
+            xs,
+            ys,
+            surface: vec,
+            cache: RefCell::new(HashMap::new()),
+            xy_swapped: xs.len() != ys.len() && xs.len() == surface.len(),
+        })
+    }
+
+    pub fn new_ref(xs: &'a [f64], ys: &'b [f64], surface: &'c [&'c [f64]]) -> Result<Self, String> {
+        let mut vec = Vec::with_capacity(surface.len());
+        surface.iter().for_each(|v| vec.push(&v[0..v.len()]));
+
+        // Since we are dealing with dynamic slices, align the xs and ys if the lengths are not aligned
+        // according to the surface dimensions. If the lengths are same, then we assume that the xs and
+        // ys are passed in the correct order.
+        is_object_constructible(xs.iter(), ys.iter(), vec.clone().into_iter()).map(|_| TwoDLookUpTableRef {
             xs,
             ys,
             surface: vec,
@@ -191,9 +164,9 @@ impl<'a, 'b> TwoDLookUpTableCow<'a, 'b> {
         }
 
         let z = if self.xy_swapped {
-            interpolate_dynamic(x, y, self.ys, self.xs, self)
+            interpolate(x, y, self.ys, self.xs, self)
         } else {
-            interpolate_dynamic(x, y, self.xs, self.ys, self)
+            interpolate(x, y, self.xs, self.ys, self)
         };
 
         // store the value in cache before returning, to speedup look up process in the future.

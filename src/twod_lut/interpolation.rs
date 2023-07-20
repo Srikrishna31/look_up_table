@@ -58,13 +58,7 @@ fn get_indices(v: &f64, vs: &[f64]) -> (usize, usize) {
     }
 }
 
-pub(in crate::twod_lut) fn interpolate_dynamic(
-    x: &f64,
-    y: &f64,
-    xs: &[f64],
-    ys: &[f64],
-    obj: &dyn SurfaceValueGetter,
-) -> f64 {
+pub(in crate::twod_lut) fn interpolate(x: &f64, y: &f64, xs: &[f64], ys: &[f64], obj: &dyn SurfaceValueGetter) -> f64 {
     // Retrieve the lower and upper bound indices for x and y axes.
     let (x1_ind, x2_ind) = get_indices(x, xs);
     let (y1_ind, y2_ind) = get_indices(y, ys);
