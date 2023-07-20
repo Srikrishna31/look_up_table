@@ -9,13 +9,21 @@
 
 mod interpolation;
 
-use crate::twod_lut::interpolation::{interpolate, interpolate_dynamic, is_object_constructible};
+use crate::twod_lut::interpolation::{interpolate_dynamic, is_object_constructible};
 use num::Float;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
 type Key = ((u64, i16, i8), (u64, i16, i8));
+
+/// This trait is defined as a proxy to get the values from surface arrays, which can be of different
+/// types - eg. [[f64; M]; N], of &[[f64;M]], or &[&[f64]], or Cow<&'_ [f64;M]> or Cow<&'_ Cow<&'_ [f64]>> etc.
+/// Each of the Lookuptable objects catering to these objects should implement this trait, so that the
+/// interpolate function can be uniform.
+trait SurfaceValueGetter {
+    fn get(&self, x: usize, y: usize) -> f64;
+}
 
 /// Type alias for a surface - a 2D array, where M is the height(rows) and N is the width(columns).
 pub type SurfaceType<const M: usize, const N: usize> = [[f64; N]; M];
@@ -78,12 +86,30 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
             return *self.cache.borrow().get(&key).unwrap();
         }
 
-        let z = interpolate(x, y, &self.x, &self.y, &self.surface);
+        let z = interpolate_dynamic(x, y, &self.x, &self.y, self);
 
         // store the value in cache before returning, to speedup look up process in the future.
         self.cache.borrow_mut().insert(key, z);
 
         *self.cache.borrow().get(&key).unwrap()
+    }
+}
+
+impl<const M: usize, const N: usize> SurfaceValueGetter for TwoDLookUpTable<M, N> {
+    fn get(&self, x: usize, y: usize) -> f64 {
+        self.surface[x][y]
+    }
+}
+
+impl SurfaceValueGetter for TwoDLookUpTableRef<'_, '_, '_> {
+    fn get(&self, x: usize, y: usize) -> f64 {
+        self.surface[x][y]
+    }
+}
+
+impl SurfaceValueGetter for TwoDLookUpTableCow<'_, '_> {
+    fn get(&self, x: usize, y: usize) -> f64 {
+        self.surface[x][y]
     }
 }
 
@@ -115,7 +141,7 @@ impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
             return *self.cache.borrow().get(&key).unwrap();
         }
 
-        let z = interpolate_dynamic(x, y, self.xs, self.ys, self.surface);
+        let z = interpolate_dynamic(x, y, self.xs, self.ys, self);
 
         // store the value in cache before returning, to speedup look up process in the future.
         self.cache.borrow_mut().insert(key, z);
@@ -165,9 +191,9 @@ impl<'a, 'b> TwoDLookUpTableCow<'a, 'b> {
         }
 
         let z = if self.xy_swapped {
-            interpolate_dynamic(x, y, self.ys, self.xs, &self.surface)
+            interpolate_dynamic(x, y, self.ys, self.xs, self)
         } else {
-            interpolate_dynamic(x, y, self.xs, self.ys, &self.surface)
+            interpolate_dynamic(x, y, self.xs, self.ys, self)
         };
 
         // store the value in cache before returning, to speedup look up process in the future.
