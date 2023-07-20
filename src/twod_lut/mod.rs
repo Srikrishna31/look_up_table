@@ -9,9 +9,7 @@
 
 mod interpolation;
 
-use crate::twod_lut::interpolation::{
-    interpolate, interpolate_dynamic, interpolate_dynamic_cow, is_object_constructible_gen,
-};
+use crate::twod_lut::interpolation::{interpolate, interpolate_dynamic, is_object_constructible};
 use num::Float;
 use std::borrow::Cow;
 use std::cell::RefCell;
@@ -58,7 +56,7 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
     ///  assert_eq!(lut.err().unwrap(), "At least two values should be provided for x and y axes")
     /// ```
     pub fn new(xs: [f64; M], ys: [f64; N], surface: SurfaceType<M, N>) -> Result<TwoDLookUpTable<M, N>, String> {
-        is_object_constructible_gen(&xs, &ys, &surface).map(|_| TwoDLookUpTable {
+        is_object_constructible(&xs, &ys, &surface).map(|_| TwoDLookUpTable {
             x: xs,
             y: ys,
             surface,
@@ -101,7 +99,7 @@ impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
     pub fn new(xs: &'a [f64], ys: &'b [f64], surface: &'c [&'c [f64]]) -> Result<Self, String> {
         let mut vec = Vec::with_capacity(surface.len());
         surface.iter().for_each(|v| vec.push(&v[0..v.len()]));
-        is_object_constructible_gen(xs.into_iter(), ys.into_iter(), vec.into_iter()).map(|_| TwoDLookUpTableRef {
+        is_object_constructible(xs.into_iter(), ys.into_iter(), vec.into_iter()).map(|_| TwoDLookUpTableRef {
             xs,
             ys,
             surface,
@@ -130,7 +128,7 @@ impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
 pub struct TwoDLookUpTableCow<'a, 'b> {
     xs: &'a [f64],
     ys: &'b [f64],
-    surface: &'static Cow<'static, [Cow<'static, [f64]>]>,
+    surface: Vec<&'static [f64]>,
     cache: RefCell<HashMap<Key, f64>>,
     xy_swapped: bool,
 }
@@ -148,10 +146,10 @@ impl<'a, 'b> TwoDLookUpTableCow<'a, 'b> {
         // Since we are dealing with dynamic slices, align the xs and ys if the lengths are not aligned
         // according to the surface dimensions. If the lengths are same, then we assume that the xs and
         // ys are passed in the correct order.
-        is_object_constructible_gen(xs.into_iter(), ys.into_iter(), vec.into_iter()).map(|_| TwoDLookUpTableCow {
+        is_object_constructible(xs.into_iter(), ys.into_iter(), vec.clone().into_iter()).map(|_| TwoDLookUpTableCow {
             xs,
             ys,
-            surface,
+            surface: vec,
             cache: RefCell::new(HashMap::new()),
             xy_swapped: xs.len() != ys.len() && xs.len() == surface.len(),
         })
@@ -167,9 +165,9 @@ impl<'a, 'b> TwoDLookUpTableCow<'a, 'b> {
         }
 
         let z = if self.xy_swapped {
-            interpolate_dynamic_cow(x, y, self.ys, self.xs, self.surface)
+            interpolate_dynamic(x, y, self.ys, self.xs, &self.surface)
         } else {
-            interpolate_dynamic_cow(x, y, self.xs, self.ys, self.surface)
+            interpolate_dynamic(x, y, self.xs, self.ys, &self.surface)
         };
 
         // store the value in cache before returning, to speedup look up process in the future.
