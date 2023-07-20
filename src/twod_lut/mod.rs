@@ -125,7 +125,7 @@ impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
     pub fn new(xs: &'a [f64], ys: &'b [f64], surface: &'c [&'c [f64]]) -> Result<Self, String> {
         let mut vec = Vec::with_capacity(surface.len());
         surface.iter().for_each(|v| vec.push(&v[0..v.len()]));
-        is_object_constructible(xs.into_iter(), ys.into_iter(), vec.into_iter()).map(|_| TwoDLookUpTableRef {
+        is_object_constructible(xs.iter(), ys.iter(), vec.into_iter()).map(|_| TwoDLookUpTableRef {
             xs,
             ys,
             surface,
@@ -172,7 +172,7 @@ impl<'a, 'b> TwoDLookUpTableCow<'a, 'b> {
         // Since we are dealing with dynamic slices, align the xs and ys if the lengths are not aligned
         // according to the surface dimensions. If the lengths are same, then we assume that the xs and
         // ys are passed in the correct order.
-        is_object_constructible(xs.into_iter(), ys.into_iter(), vec.clone().into_iter()).map(|_| TwoDLookUpTableCow {
+        is_object_constructible(xs.iter(), ys.iter(), vec.clone().into_iter()).map(|_| TwoDLookUpTableCow {
             xs,
             ys,
             surface: vec,

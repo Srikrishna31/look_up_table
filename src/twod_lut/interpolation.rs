@@ -1,8 +1,7 @@
-use crate::twod_lut::{SurfaceType, SurfaceValueGetter};
+use crate::twod_lut::SurfaceValueGetter;
 use crate::EPSILON;
 use itertools::Itertools;
-use num::complex::ComplexFloat;
-use std::borrow::{Borrow, Cow};
+use std::borrow::Borrow;
 use std::iter::Iterator;
 use std::ops::Sub;
 
@@ -25,7 +24,6 @@ where
     if itertools::any(xs.clone(), |v| v.borrow().is_nan() || v.borrow().is_infinite())
         || itertools::any(ys.clone(), |v| v.borrow().is_nan() || v.borrow().is_infinite())
         || surface
-            .clone()
             .into_iter()
             .any(|row| itertools::any(row, |v| v.borrow().is_nan() || v.borrow().is_infinite()))
     {
