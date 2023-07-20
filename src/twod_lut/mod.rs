@@ -9,15 +9,21 @@
 
 mod interpolation;
 
-use crate::twod_lut::interpolation::{
-    interpolate, interpolate_dynamic, interpolate_dynamic_cow, is_object_constructible, is_object_constructible_dynamic,
-};
+use crate::twod_lut::interpolation::{interpolate, is_object_constructible};
 use num::Float;
 use std::borrow::Cow;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
 type Key = ((u64, i16, i8), (u64, i16, i8));
+
+/// This trait is defined as a proxy to get the values from surface arrays, which can be of different
+/// types - eg. [[f64; M]; N], of &[[f64;M]], or &[&[f64]], or Cow<&'_ [f64;M]> or Cow<&'_ Cow<&'_ [f64]>> etc.
+/// Each of the Lookuptable objects catering to these objects should implement this trait, so that the
+/// interpolate function can be uniform.
+trait SurfaceValueGetter {
+    fn get(&self, x: usize, y: usize) -> f64;
+}
 
 /// Type alias for a surface - a 2D array, where M is the height(rows) and N is the width(columns).
 pub type SurfaceType<const M: usize, const N: usize> = [[f64; N]; M];
@@ -80,12 +86,24 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
             return *self.cache.borrow().get(&key).unwrap();
         }
 
-        let z = interpolate(x, y, &self.x, &self.y, &self.surface);
+        let z = interpolate(x, y, &self.x, &self.y, self);
 
         // store the value in cache before returning, to speedup look up process in the future.
         self.cache.borrow_mut().insert(key, z);
 
         *self.cache.borrow().get(&key).unwrap()
+    }
+}
+
+impl<const M: usize, const N: usize> SurfaceValueGetter for TwoDLookUpTable<M, N> {
+    fn get(&self, x: usize, y: usize) -> f64 {
+        self.surface[x][y]
+    }
+}
+
+impl SurfaceValueGetter for TwoDLookUpTableRef<'_, '_, '_> {
+    fn get(&self, x: usize, y: usize) -> f64 {
+        self.surface[x][y]
     }
 }
 
@@ -93,63 +111,44 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
 pub struct TwoDLookUpTableRef<'a, 'b, 'c> {
     xs: &'a [f64],
     ys: &'b [f64],
-    surface: &'c [&'c [f64]],
-    cache: RefCell<HashMap<Key, f64>>,
-}
-
-impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
-    pub fn new(xs: &'a [f64], ys: &'b [f64], surface: &'c [&'c [f64]]) -> Result<Self, String> {
-        is_object_constructible_dynamic(xs, ys, surface).map(|_| TwoDLookUpTableRef {
-            xs,
-            ys,
-            surface,
-            cache: RefCell::new(HashMap::new()),
-        })
-    }
-
-    pub fn get(&self, x: &f64, y: &f64) -> f64 {
-        // First do the cache lookup
-        let key = (x.integer_decode(), y.integer_decode());
-
-        if self.cache.borrow().contains_key(&key) {
-            return *self.cache.borrow().get(&key).unwrap();
-        }
-
-        let z = interpolate_dynamic(x, y, self.xs, self.ys, self.surface);
-
-        // store the value in cache before returning, to speedup look up process in the future.
-        self.cache.borrow_mut().insert(key, z);
-
-        *self.cache.borrow().get(&key).unwrap()
-    }
-}
-
-#[derive(Debug)]
-pub struct TwoDLookUpTableCow<'a, 'b> {
-    xs: &'a [f64],
-    ys: &'b [f64],
-    surface: &'static Cow<'static, [Cow<'static, [f64]>]>,
+    surface: Vec<&'c [f64]>,
     cache: RefCell<HashMap<Key, f64>>,
     xy_swapped: bool,
 }
 
-impl<'a, 'b> TwoDLookUpTableCow<'a, 'b> {
+impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
     #[allow(clippy::ptr_arg)]
     pub fn new(
         xs: &'a [f64],
         ys: &'b [f64],
         surface: &'static Cow<'static, [Cow<'static, [f64]>]>,
     ) -> Result<Self, String> {
-        let mut vec = Vec::new();
+        let mut vec = Vec::with_capacity(surface.len());
         surface.iter().for_each(|v| vec.push(&v[0..v.len()]));
 
         // Since we are dealing with dynamic slices, align the xs and ys if the lengths are not aligned
         // according to the surface dimensions. If the lengths are same, then we assume that the xs and
         // ys are passed in the correct order.
-        is_object_constructible_dynamic(xs, ys, &vec).map(|_| TwoDLookUpTableCow {
+        is_object_constructible(xs.iter(), ys.iter(), vec.clone().into_iter()).map(|_| TwoDLookUpTableRef {
             xs,
             ys,
-            surface,
+            surface: vec,
+            cache: RefCell::new(HashMap::new()),
+            xy_swapped: xs.len() != ys.len() && xs.len() == surface.len(),
+        })
+    }
+
+    pub fn new_ref(xs: &'a [f64], ys: &'b [f64], surface: &'c [&'c [f64]]) -> Result<Self, String> {
+        let mut vec = Vec::with_capacity(surface.len());
+        surface.iter().for_each(|v| vec.push(&v[0..v.len()]));
+
+        // Since we are dealing with dynamic slices, align the xs and ys if the lengths are not aligned
+        // according to the surface dimensions. If the lengths are same, then we assume that the xs and
+        // ys are passed in the correct order.
+        is_object_constructible(xs.iter(), ys.iter(), vec.clone().into_iter()).map(|_| TwoDLookUpTableRef {
+            xs,
+            ys,
+            surface: vec,
             cache: RefCell::new(HashMap::new()),
             xy_swapped: xs.len() != ys.len() && xs.len() == surface.len(),
         })
@@ -165,9 +164,9 @@ impl<'a, 'b> TwoDLookUpTableCow<'a, 'b> {
         }
 
         let z = if self.xy_swapped {
-            interpolate_dynamic_cow(x, y, self.ys, self.xs, self.surface)
+            interpolate(x, y, self.ys, self.xs, self)
         } else {
-            interpolate_dynamic_cow(x, y, self.xs, self.ys, self.surface)
+            interpolate(x, y, self.xs, self.ys, self)
         };
 
         // store the value in cache before returning, to speedup look up process in the future.
