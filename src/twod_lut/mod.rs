@@ -10,8 +10,7 @@
 mod interpolation;
 
 use crate::twod_lut::interpolation::{
-    interpolate, interpolate_dynamic, interpolate_dynamic_cow, is_object_constructible_dynamic,
-    is_object_constructible_gen,
+    interpolate, interpolate_dynamic, interpolate_dynamic_cow, is_object_constructible_gen,
 };
 use num::Float;
 use std::borrow::Cow;
@@ -100,7 +99,9 @@ pub struct TwoDLookUpTableRef<'a, 'b, 'c> {
 
 impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
     pub fn new(xs: &'a [f64], ys: &'b [f64], surface: &'c [&'c [f64]]) -> Result<Self, String> {
-        is_object_constructible_dynamic(xs, ys, surface).map(|_| TwoDLookUpTableRef {
+        let mut vec = Vec::with_capacity(surface.len());
+        surface.iter().for_each(|v| vec.push(&v[0..v.len()]));
+        is_object_constructible_gen(xs.into_iter(), ys.into_iter(), vec.into_iter()).map(|_| TwoDLookUpTableRef {
             xs,
             ys,
             surface,
@@ -141,7 +142,7 @@ impl<'a, 'b> TwoDLookUpTableCow<'a, 'b> {
         ys: &'b [f64],
         surface: &'static Cow<'static, [Cow<'static, [f64]>]>,
     ) -> Result<Self, String> {
-        let mut vec = Vec::new();
+        let mut vec = Vec::with_capacity(surface.len());
         surface.iter().for_each(|v| vec.push(&v[0..v.len()]));
 
         // Since we are dealing with dynamic slices, align the xs and ys if the lengths are not aligned
@@ -177,5 +178,3 @@ impl<'a, 'b> TwoDLookUpTableCow<'a, 'b> {
         *self.cache.borrow().get(&key).unwrap()
     }
 }
-
-

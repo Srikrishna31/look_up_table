@@ -24,7 +24,8 @@ where
 
     if itertools::any(xs.clone(), |v| v.borrow().is_nan() || v.borrow().is_infinite())
         || itertools::any(ys.clone(), |v| v.borrow().is_nan() || v.borrow().is_infinite())
-        || surface.clone()
+        || surface
+            .clone()
             .into_iter()
             .any(|row| itertools::any(row, |v| v.borrow().is_nan() || v.borrow().is_infinite()))
     {
@@ -36,34 +37,6 @@ where
     if !itertools::all(itxs, |(prev, curr)| curr - prev > EPSILON)
         || !itertools::all(itys, |(prev, curr)| curr - prev > EPSILON)
     {
-        return Err("X and Y values should be in strictly increasing order".to_string());
-    }
-
-    Ok(true)
-}
-
-// TODO: Try to unify the two copies of the functions by using an Iterator implementation
-// or some other similar construct.
-
-pub(in crate::twod_lut) fn is_object_constructible_dynamic(
-    xs: &[f64],
-    ys: &[f64],
-    surface: &[&[f64]],
-) -> Result<bool, String> {
-    if xs.len() < 2 || ys.len() < 2 {
-        return Err("At least two values should be provided for x and y axes".to_string());
-    }
-
-    let check_nan_infinity = |v: &f64| v.is_nan() || v.is_infinite();
-
-    if xs.iter().any(check_nan_infinity)
-        || ys.iter().any(check_nan_infinity)
-        || surface.iter().any(|row| row.iter().any(check_nan_infinity))
-    {
-        return Err("Cannot create a Lookup Table containing NaNs or Infinities".to_string());
-    }
-
-    if !xs.windows(2).all(|c| c[1] - c[0] > EPSILON) || !ys.windows(2).all(|c| c[1] - c[0] > EPSILON) {
         return Err("X and Y values should be in strictly increasing order".to_string());
     }
 
