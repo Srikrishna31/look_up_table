@@ -11,9 +11,10 @@
 mod interpolation;
 
 use super::oned_lut::interpolation::{interpolate, is_object_constructible, Key};
+use crate::String;
+use core::cell::RefCell;
+use hashbrown::HashMap;
 use num::Float;
-use std::cell::RefCell;
-use std::collections::HashMap;
 
 /// Linear interpolation with nearest neighbor extrapolation when index is outside support region,
 /// and with Caching support to enable fast lookups on same values.
