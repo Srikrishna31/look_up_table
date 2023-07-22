@@ -1,11 +1,11 @@
 use crate::twod_lut::SurfaceValueGetter;
-use crate::EPSILON;
+use crate::{String, EPSILON};
+use core::borrow::Borrow;
+use core::iter::Iterator;
+use core::ops::Sub;
 use itertools::Itertools;
-use std::borrow::Borrow;
-use std::iter::Iterator;
-use std::ops::Sub;
 
-pub(in crate::twod_lut) fn is_object_constructible<I, J, K>(xs: I, ys: J, surface: K) -> Result<bool, String>
+pub(super) fn is_object_constructible<I, J, K>(xs: I, ys: J, surface: K) -> Result<bool, String>
 where
     I: IntoIterator + Clone,
     J: IntoIterator + Clone,
@@ -18,7 +18,7 @@ where
     <<K as IntoIterator>::Item as IntoIterator>::Item: Borrow<f64> + Sub + Clone,
 {
     if xs.clone().into_iter().count() < 2 || ys.clone().into_iter().count() < 2 {
-        return Err("At least two values should be provided for x and y axes".to_string());
+        return Err(String::from("At least two values should be provided for x and y axes"));
     }
 
     if itertools::any(xs.clone(), |v| v.borrow().is_nan() || v.borrow().is_infinite())
@@ -27,7 +27,7 @@ where
             .into_iter()
             .any(|row| itertools::any(row, |v| v.borrow().is_nan() || v.borrow().is_infinite()))
     {
-        return Err("Cannot create a Lookup Table containing NaNs or Infinities".to_string());
+        return Err(String::from("Cannot create a Lookup Table containing NaNs or Infinities"));
     }
 
     let itxs = xs.into_iter().tuple_windows::<(_, _)>();
@@ -35,7 +35,7 @@ where
     if !itertools::all(itxs, |(prev, curr)| curr - prev > EPSILON)
         || !itertools::all(itys, |(prev, curr)| curr - prev > EPSILON)
     {
-        return Err("X and Y values should be in strictly increasing order".to_string());
+        return Err(String::from("X and Y values should be in strictly increasing order"));
     }
 
     Ok(true)
@@ -58,7 +58,7 @@ fn get_indices(v: &f64, vs: &[f64]) -> (usize, usize) {
     }
 }
 
-pub(in crate::twod_lut) fn interpolate(x: &f64, y: &f64, xs: &[f64], ys: &[f64], obj: &dyn SurfaceValueGetter) -> f64 {
+pub(super) fn interpolate(x: &f64, y: &f64, xs: &[f64], ys: &[f64], obj: &dyn SurfaceValueGetter) -> f64 {
     // Retrieve the lower and upper bound indices for x and y axes.
     let (x1_ind, x2_ind) = get_indices(x, xs);
     let (y1_ind, y2_ind) = get_indices(y, ys);
