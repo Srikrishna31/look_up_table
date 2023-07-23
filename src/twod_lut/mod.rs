@@ -10,10 +10,19 @@
 mod interpolation;
 
 use crate::twod_lut::interpolation::{interpolate, is_object_constructible};
-use crate::{String, Vec, MAX_FUNCTION_POINTS};
+#[cfg(feature = "no-std")]
+use crate::MAX_FUNCTION_POINTS;
+use crate::{String, Vec};
+
 use core::cell::RefCell;
+#[cfg(feature = "no-std")]
 use hashbrown::HashMap;
 use num::Float;
+#[cfg(feature = "std")]
+use std::collections::HashMap;
+
+#[cfg(feature = "std")]
+use std::borrow::Cow;
 
 type Key = ((u64, i16, i8), (u64, i16, i8));
 
@@ -117,36 +126,15 @@ pub struct TwoDLookUpTableRef<'a, 'b, 'c> {
 }
 
 impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
+    #[cfg(feature = "std")]
     #[allow(clippy::ptr_arg)]
-    //TODO: Allow this structure when std is enabled.
-    // pub fn new(
-    //     xs: &'a [f64],
-    //     ys: &'b [f64],
-    //     surface: &'static Cow<'static, [Cow<'static, [f64]>]>,
-    // ) -> Result<Self, String> {
-    //     //TODO: Unify the code for the functions new and new_ref
-    //     if xs.len() > MAX_FUNCTION_POINTS || ys.len() > MAX_FUNCTION_POINTS || surface.len() > MAX_FUNCTION_POINTS ||
-    //         surface.iter().any(|row| row.len() > MAX_FUNCTION_POINTS) {
-    //         return Err(String::from("Functions with more than {MAX_FUNCTION_POINTS} are not supported"));
-    //     }
-    //
-    //
-    //     let mut vec = Vec::new();
-    //     surface.iter().for_each(|v| vec.push(&v[0..v.len()]));
-    //
-    //     // Since we are dealing with dynamic slices, align the xs and ys if the lengths are not aligned
-    //     // according to the surface dimensions. If the lengths are same, then we assume that the xs and
-    //     // ys are passed in the correct order.
-    //     is_object_constructible(xs.iter(), ys.iter(), vec.clone().into_iter()).map(|_| TwoDLookUpTableRef {
-    //         xs,
-    //         ys,
-    //         surface: vec,
-    //         cache: RefCell::new(HashMap::new()),
-    //         xy_swapped: xs.len() != ys.len() && xs.len() == surface.len(),
-    //     })
-    // }
-
-    pub fn new_ref(xs: &'a [f64], ys: &'b [f64], surface: &'c [&'c [f64]]) -> Result<Self, String> {
+    pub fn from_cow(
+        xs: &'a [f64],
+        ys: &'b [f64],
+        surface: &'static Cow<'static, [Cow<'static, [f64]>]>,
+    ) -> Result<Self, String> {
+        #[cfg(feature = "no-std")]
+        //TODO: Unify the code for the functions from and new
         if xs.len() > MAX_FUNCTION_POINTS
             || ys.len() > MAX_FUNCTION_POINTS
             || surface.len() > MAX_FUNCTION_POINTS
@@ -156,7 +144,40 @@ impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
         }
 
         let mut vec = Vec::new();
+        #[cfg(feature = "no-std")]
         surface.iter().for_each(|v| vec.push(&v[0..v.len()]).unwrap());
+
+        #[cfg(feature = "std")]
+        surface.iter().for_each(|v| vec.push(&v[0..v.len()]));
+
+        // Since we are dealing with dynamic slices, align the xs and ys if the lengths are not aligned
+        // according to the surface dimensions. If the lengths are same, then we assume that the xs and
+        // ys are passed in the correct order.
+        is_object_constructible(xs.iter(), ys.iter(), vec.clone().into_iter()).map(|_| TwoDLookUpTableRef {
+            xs,
+            ys,
+            surface: vec,
+            cache: RefCell::new(HashMap::new()),
+            xy_swapped: xs.len() != ys.len() && xs.len() == surface.len(),
+        })
+    }
+
+    pub fn new(xs: &'a [f64], ys: &'b [f64], surface: &'c [&'c [f64]]) -> Result<Self, String> {
+        #[cfg(feature = "no-std")]
+        if xs.len() > MAX_FUNCTION_POINTS
+            || ys.len() > MAX_FUNCTION_POINTS
+            || surface.len() > MAX_FUNCTION_POINTS
+            || surface.iter().any(|row| row.len() > MAX_FUNCTION_POINTS)
+        {
+            return Err(String::from("Functions with more than {MAX_FUNCTION_POINTS} are not supported"));
+        }
+
+        let mut vec = Vec::new();
+        #[cfg(feature = "no-std")]
+        surface.iter().for_each(|v| vec.push(&v[0..v.len()]).unwrap());
+
+        #[cfg(feature = "std")]
+        surface.iter().for_each(|v| vec.push(&v[0..v.len()]));
 
         // Since we are dealing with dynamic slices, align the xs and ys if the lengths are not aligned
         // according to the surface dimensions. If the lengths are same, then we assume that the xs and
