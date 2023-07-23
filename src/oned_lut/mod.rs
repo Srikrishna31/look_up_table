@@ -9,15 +9,20 @@
 //! Ofcourse when the values are out of bounds, then the last values are returned always.
 
 mod interpolation;
+use cfg_if::cfg_if;
 
 use super::oned_lut::interpolation::{interpolate, is_object_constructible, Key};
 use crate::String;
 use core::cell::RefCell;
-#[cfg(feature = "no-std")]
-use hashbrown::HashMap;
+cfg_if! {
+    if #[cfg(feature="no-std")] {
+        use hashbrown::HashMap;
+    } else {
+        use std::collections::HashMap;
+    }
+}
+
 use num::Float;
-#[cfg(feature = "std")]
-use std::collections::HashMap;
 
 /// Linear interpolation with nearest neighbor extrapolation when index is outside support region,
 /// and with Caching support to enable fast lookups on same values.
