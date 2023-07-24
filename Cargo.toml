@@ -25,6 +25,6 @@ codegen-units=1
 opt-level=3 # Although this option is to reduce size, this option sometimes increases the size
 
 [features]
-default = ["std"]
-std = []
+default=[]
 no-std = ["dep:heapless", "dep:hashbrown"]
+
