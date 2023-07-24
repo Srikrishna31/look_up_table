@@ -9,18 +9,16 @@
 //! Ofcourse when the values are out of bounds, then the last values are returned always.
 
 mod interpolation;
-use cfg_if::cfg_if;
 
 use super::oned_lut::interpolation::{interpolate, is_object_constructible, Key};
 use crate::String;
 use core::cell::RefCell;
-cfg_if! {
-    if #[cfg(feature="no-std")] {
-        use hashbrown::HashMap;
-    } else {
-        use std::collections::HashMap;
-    }
-}
+
+#[cfg(not(feature = "no-std"))]
+use std::collections::HashMap;
+
+#[cfg(feature = "no-std")]
+use hashbrown::HashMap;
 
 use num::Float;
 
