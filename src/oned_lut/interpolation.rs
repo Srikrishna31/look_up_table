@@ -3,7 +3,6 @@ use crate::error::ConstructionError::{ContainingNansOrInfinities, IncreasingDimO
 use crate::EPSILON;
 
 pub(super) type Key = (u64, i16, i8);
-use crate::String;
 
 pub(in crate::oned_lut) fn is_object_constructible(xs: &[f64], ys: &[f64]) -> Result<bool, ConstructionError> {
     if xs.len() < 2 || ys.len() < 2 {

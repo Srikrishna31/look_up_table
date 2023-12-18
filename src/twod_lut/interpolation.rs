@@ -1,6 +1,6 @@
 use crate::twod_lut::SurfaceValueGetter;
 use crate::ConstructionError::{ContainingNansOrInfinities, IncreasingDimOrderError, MinLengthError};
-use crate::{ConstructionError, String, EPSILON};
+use crate::{ConstructionError, EPSILON};
 use core::borrow::Borrow;
 use core::iter::Iterator;
 use core::ops::Sub;

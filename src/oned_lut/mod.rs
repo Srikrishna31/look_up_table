@@ -12,7 +12,6 @@ mod interpolation;
 
 use super::oned_lut::interpolation::{interpolate, is_object_constructible, Key};
 use crate::error::ConstructionError;
-use crate::String;
 use core::cell::RefCell;
 
 #[cfg(not(feature = "no-std"))]
