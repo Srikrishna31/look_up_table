@@ -2,7 +2,7 @@
 // extern crate test;
 // use test::Bencher;
 
-use look_up_table::OneDLookUpTable;
+use look_up_table::{ConstructionError, OneDLookUpTable};
 use rstest::{fixture, rstest};
 
 type IncrFunc = OneDLookUpTable<5>;
@@ -44,25 +44,28 @@ fn when_x_value_is_in_interval_return_appropriate_first_value_in_y_table(simple_
 }
 
 #[test]
-#[should_panic(expected = "X values should be in strictly increasing order")]
 fn when_x_values_are_same_dont_construct_object() {
-    OneDLookUpTable::new([2.0; 6], [2.0; 6]).unwrap();
+    let res = OneDLookUpTable::new([2.0; 6], [2.0; 6]);
+
+    assert!(matches!(res.unwrap_err(), ConstructionError::IncreasingXOrderError))
 }
 
 #[test]
-#[should_panic(expected = "At least two values should be provided")]
 fn when_given_single_x_value_dont_construct_object() {
-    OneDLookUpTable::new([2.6; 1], [3.2; 1]).unwrap();
+    let res = OneDLookUpTable::new([2.6; 1], [3.2; 1]);
+
+    assert!(matches!(res.unwrap_err(), ConstructionError::MinLengthError))
 }
 
 #[rstest]
-#[should_panic(expected = "Cannot create a Lookup Table containing NaNs or Infinities")]
 fn when_x_or_y_values_contain_nan_or_infinities_dont_construct_object(
     #[values([f64::NAN;5], [0.0, 1.5, f64::INFINITY, 4.5, 2.3], [1.1, 2.2, 3.3, 4.4, 5.5])] x: [f64; 5],
     #[values([f64::NAN;5], [0.0, 0.0, 0.0, f64::NAN, 0.05], [0.0, 1.5, f64::INFINITY, f64::INFINITY, f64::NAN])]
     y: [f64; 5],
 ) {
-    OneDLookUpTable::new(x, y).unwrap();
+    let res = OneDLookUpTable::new(x, y);
+
+    assert!(matches!(res.unwrap_err(), ConstructionError::ContainingNansOrInfinities))
 }
 
 #[rstest]

@@ -1,4 +1,4 @@
-use look_up_table::{TwoDLookUpTable};
+use look_up_table::TwoDLookUpTable;
 use rstest::{fixture, rstest};
 type IncrSurface = TwoDLookUpTable<5, 5>;
 

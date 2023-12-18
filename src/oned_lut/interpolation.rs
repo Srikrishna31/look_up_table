@@ -1,19 +1,21 @@
+use crate::error::ConstructionError;
+use crate::error::ConstructionError::{ContainingNansOrInfinities, IncreasingXOrderError, MinLengthError};
 use crate::EPSILON;
 
 pub(super) type Key = (u64, i16, i8);
 use crate::String;
 
-pub(in crate::oned_lut) fn is_object_constructible(xs: &[f64], ys: &[f64]) -> Result<bool, String> {
+pub(in crate::oned_lut) fn is_object_constructible(xs: &[f64], ys: &[f64]) -> Result<bool, ConstructionError> {
     if xs.len() < 2 || ys.len() < 2 {
-        return Err(String::from("At least two values should be provided"));
+        return Err(MinLengthError);
     }
 
     if xs.iter().any(|v| v.is_nan() || v.is_infinite()) || ys.iter().any(|v| v.is_nan() || v.is_infinite()) {
-        return Err(String::from("Cannot create a Lookup Table containing NaNs or Infinities"));
+        return Err(ContainingNansOrInfinities);
     }
 
     if !xs.windows(2).all(|c| c[1] - c[0] > EPSILON) {
-        return Err(String::from("X values should be in strictly increasing order"));
+        return Err(IncreasingXOrderError);
     }
 
     Ok(true)
