@@ -1,11 +1,12 @@
 use crate::twod_lut::SurfaceValueGetter;
-use crate::{String, EPSILON};
+use crate::ConstructionError::{ContainingNansOrInfinities, IncreasingDimOrderError, MinLengthError};
+use crate::{ConstructionError, String, EPSILON};
 use core::borrow::Borrow;
 use core::iter::Iterator;
 use core::ops::Sub;
 use itertools::Itertools;
 
-pub(super) fn is_object_constructible<I, J, K>(xs: I, ys: J, surface: K) -> Result<bool, String>
+pub(super) fn is_object_constructible<I, J, K>(xs: I, ys: J, surface: K) -> Result<bool, ConstructionError>
 where
     I: IntoIterator + Clone,
     J: IntoIterator + Clone,
@@ -18,7 +19,7 @@ where
     <<K as IntoIterator>::Item as IntoIterator>::Item: Borrow<f64> + Sub + Clone,
 {
     if xs.clone().into_iter().count() < 2 || ys.clone().into_iter().count() < 2 {
-        return Err(String::from("At least two values should be provided for x and y axes"));
+        return Err(MinLengthError);
     }
 
     if itertools::any(xs.clone(), |v| v.borrow().is_nan() || v.borrow().is_infinite())
@@ -27,7 +28,7 @@ where
             .into_iter()
             .any(|row| itertools::any(row, |v| v.borrow().is_nan() || v.borrow().is_infinite()))
     {
-        return Err(String::from("Cannot create a Lookup Table containing NaNs or Infinities"));
+        return Err(ContainingNansOrInfinities);
     }
 
     let itxs = xs.into_iter().tuple_windows::<(_, _)>();
@@ -35,7 +36,7 @@ where
     if !itertools::all(itxs, |(prev, curr)| curr - prev > EPSILON)
         || !itertools::all(itys, |(prev, curr)| curr - prev > EPSILON)
     {
-        return Err(String::from("X and Y values should be in strictly increasing order"));
+        return Err(IncreasingDimOrderError);
     }
 
     Ok(true)

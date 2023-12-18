@@ -16,13 +16,14 @@ cfg_if! {
     if #[cfg(feature="no-std")] {
         use crate::MAX_FUNCTION_POINTS;
         use hashbrown::HashMap;
+        use crate::ConstructionError::MaxLengthError;
     } else {
         use std::collections::HashMap;
         use std::borrow::Cow;
     }
 }
 
-use crate::{String, Vec};
+use crate::{ConstructionError, String, Vec};
 use core::cell::RefCell;
 use num::Float;
 
@@ -56,25 +57,29 @@ impl<const M: usize, const N: usize> TwoDLookUpTable<M, N> {
     /// points of a uni-variate function.
     /// If the `x` or `y` values are not sorted in ascending order:
     /// ```
-    ///  use look_up_table::TwoDLookUpTable;
+    ///  use look_up_table::{TwoDLookUpTable, ConstructionError::IncreasingDimOrderError};
     ///  let lut = TwoDLookUpTable::new([3.0, 1.0, 2.0], [1.0;2], [[1.0;2]; 3]);
-    ///  assert_eq!(lut.err().unwrap(), "X and Y values should be in strictly increasing order")
+    ///  assert!(matches!(lut.err().unwrap(), IncreasingDimOrderError));
     /// ```
     ///
     /// If the `x` or `y` or `surface` values contain NANs or Infinities
     /// ```
-    ///  use look_up_table::TwoDLookUpTable;
+    ///  use look_up_table::{TwoDLookUpTable, ConstructionError::ContainingNansOrInfinities};
     ///  let lut = TwoDLookUpTable::new([f64::NAN, 1.0, 2.0], [f64::NEG_INFINITY;3], [[1.0;3];3]);
-    ///  assert_eq!(lut.err().unwrap(), "Cannot create a Lookup Table containing NaNs or Infinities")
+    ///  assert!(matches!(lut.err().unwrap(), ContainingNansOrInfinities));
     /// ```
     ///
     /// If the `x` or `y` or `surface` values are arrays of 1 value:
     /// ```
-    ///  use look_up_table::TwoDLookUpTable;
+    ///  use look_up_table::{TwoDLookUpTable, ConstructionError::MinLengthError};
     ///  let lut = TwoDLookUpTable::new([1.0], [f64::NEG_INFINITY], [[1.0]; 1]);
-    ///  assert_eq!(lut.err().unwrap(), "At least two values should be provided for x and y axes")
+    ///  assert!(matches!(lut.err().unwrap(), MinLengthError));
     /// ```
-    pub fn new(xs: [f64; M], ys: [f64; N], surface: SurfaceType<M, N>) -> Result<TwoDLookUpTable<M, N>, String> {
+    pub fn new(
+        xs: [f64; M],
+        ys: [f64; N],
+        surface: SurfaceType<M, N>,
+    ) -> Result<TwoDLookUpTable<M, N>, ConstructionError> {
         is_object_constructible(&xs, &ys, &surface).map(|_| TwoDLookUpTable {
             x: xs,
             y: ys,
@@ -134,7 +139,7 @@ impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
         xs: &'a [f64],
         ys: &'b [f64],
         surface: &'static Cow<'static, [Cow<'static, [f64]>]>,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, ConstructionError> {
         //TODO: Unify the code for the functions from and new
 
         let mut vec = Vec::new();
@@ -152,14 +157,14 @@ impl<'a, 'b, 'c> TwoDLookUpTableRef<'a, 'b, 'c> {
         })
     }
 
-    pub fn new(xs: &'a [f64], ys: &'b [f64], surface: &'c [&'c [f64]]) -> Result<Self, String> {
+    pub fn new(xs: &'a [f64], ys: &'b [f64], surface: &'c [&'c [f64]]) -> Result<Self, ConstructionError> {
         #[cfg(feature = "no-std")]
         if xs.len() > MAX_FUNCTION_POINTS
             || ys.len() > MAX_FUNCTION_POINTS
             || surface.len() > MAX_FUNCTION_POINTS
             || surface.iter().any(|row| row.len() > MAX_FUNCTION_POINTS)
         {
-            return Err(String::from("Functions with more than {MAX_FUNCTION_POINTS} are not supported"));
+            return Err(MaxLengthError);
         }
 
         let mut vec = Vec::new();

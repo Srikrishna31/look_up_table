@@ -47,7 +47,7 @@ fn when_x_value_is_in_interval_return_appropriate_first_value_in_y_table(simple_
 fn when_x_values_are_same_dont_construct_object() {
     let res = OneDLookUpTable::new([2.0; 6], [2.0; 6]);
 
-    assert!(matches!(res.unwrap_err(), ConstructionError::IncreasingXOrderError))
+    assert!(matches!(res.unwrap_err(), ConstructionError::IncreasingDimOrderError))
 }
 
 #[test]
