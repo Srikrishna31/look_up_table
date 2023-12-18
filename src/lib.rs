@@ -3,13 +3,14 @@
 #[cfg(not(feature = "no-std"))]
 extern crate std;
 
+mod error;
 mod oned_lut;
 mod twod_lut;
-mod error;
 
 pub(crate) const EPSILON: f64 = 0.00000001;
 
 use cfg_if::cfg_if;
+pub use error::ConstructionError;
 pub use oned_lut::{OneDLookUpTable, OneDLookUpTableRef};
 pub use twod_lut::{TwoDLookUpTable, TwoDLookUpTableRef};
 

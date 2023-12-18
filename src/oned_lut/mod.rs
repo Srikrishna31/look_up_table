@@ -11,6 +11,7 @@
 mod interpolation;
 
 use super::oned_lut::interpolation::{interpolate, is_object_constructible, Key};
+use crate::error::ConstructionError;
 use crate::String;
 use core::cell::RefCell;
 
@@ -38,25 +39,25 @@ impl<const N: usize> OneDLookUpTable<N> {
     /// points of a uni-variate function.
     /// If the `x` values are not sorted in ascending order:
     /// ```
-    ///  use look_up_table::OneDLookUpTable;
+    ///  use look_up_table::{OneDLookUpTable, ConstructionError};
     ///  let lut = OneDLookUpTable::new([3.0, 1.0, 2.0], [1.0;3]);
-    ///  assert_eq!(lut.err().unwrap(), "X values should be in strictly increasing order")
+    ///  assert!(matches!(lut.err().unwrap(), ConstructionError::IncreasingXOrderError))
     /// ```
     ///
     /// If the `x` or `y` values contain NANs or Infinities
     /// ```
-    ///  use look_up_table::OneDLookUpTable;
+    ///  use look_up_table::{OneDLookUpTable, ConstructionError};
     ///  let lut = OneDLookUpTable::new([f64::NAN, 1.0, 2.0], [f64::NEG_INFINITY;3]);
-    ///  assert_eq!(lut.err().unwrap(), "Cannot create a Lookup Table containing NaNs or Infinities")
+    ///  assert!(matches!(lut.err().unwrap(), ConstructionError::ContainingNansOrInfinities))
     /// ```
     ///
     /// If the `x` or `y` values are arrays of 1 value:
     /// ```
-    ///  use look_up_table::OneDLookUpTable;
+    ///  use look_up_table::{OneDLookUpTable, ConstructionError};
     ///  let lut = OneDLookUpTable::new([1.0], [f64::NEG_INFINITY]);
-    ///  assert_eq!(lut.err().unwrap(), "At least two values should be provided")
+    ///  assert!(matches!(lut.err().unwrap(), ConstructionError::MinLengthError))
     /// ```
-    pub fn new(x: [f64; N], y: [f64; N]) -> Result<OneDLookUpTable<N>, String> {
+    pub fn new(x: [f64; N], y: [f64; N]) -> Result<OneDLookUpTable<N>, ConstructionError> {
         is_object_constructible(&x, &y).map(|_| OneDLookUpTable {
             x,
             y,
@@ -97,7 +98,7 @@ pub struct OneDLookUpTableRef<'a, 'b> {
 }
 
 impl<'a, 'b> OneDLookUpTableRef<'a, 'b> {
-    pub fn new(xs: &'a [f64], ys: &'b [f64]) -> Result<OneDLookUpTableRef<'a, 'b>, String> {
+    pub fn new(xs: &'a [f64], ys: &'b [f64]) -> Result<OneDLookUpTableRef<'a, 'b>, ConstructionError> {
         is_object_constructible(xs, ys).map(|_| OneDLookUpTableRef {
             xs,
             ys,
