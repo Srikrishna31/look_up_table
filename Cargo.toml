@@ -1,9 +1,12 @@
 [package]
 name = "look_up_table"
-version = "0.1.0"
+license = "MIT"
+repository = "https://github.com/Srikrishna31/look_up_table"
+readme = "README.md"
+authors = ["Krishna Addepalli <coolkrishna31@gmail.com>"]
+description = "A library supporting interpolation of presampled functions points."
+version = "0.1.1"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 num = "0.4.1"
@@ -12,7 +15,6 @@ cfg-if = "1.0.0"
 heapless = {version="0.8.0", optional=true}
 hashbrown = {version="0.14.3", optional=true}
 thiserror-no-std = "2.0.2"
-
 
 
 [dev-dependencies]
