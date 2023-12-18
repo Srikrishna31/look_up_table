@@ -23,7 +23,7 @@ cfg_if! {
     }
 }
 
-use crate::{ConstructionError, String, Vec};
+use crate::{ConstructionError, Vec};
 use core::cell::RefCell;
 use num::Float;
 
