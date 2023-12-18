@@ -5,6 +5,7 @@ extern crate std;
 
 mod oned_lut;
 mod twod_lut;
+mod error;
 
 pub(crate) const EPSILON: f64 = 0.00000001;
 
