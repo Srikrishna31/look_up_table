@@ -1,4 +1,4 @@
-use look_up_table::TwoDLookUpTable;
+use look_up_table::{ConstructionError, TwoDLookUpTable};
 use rstest::{fixture, rstest};
 type IncrSurface = TwoDLookUpTable<5, 5>;
 
@@ -36,21 +36,24 @@ fn when_x_y_values_are_out_of_bounds_return_corner_values(
 }
 
 #[test]
-#[should_panic(expected = "X and Y values should be in strictly increasing order")]
 fn when_x_or_y_values_are_not_increasing_dont_construct_object() {
-    TwoDLookUpTable::new([3.0, 1.0, 2.0], [1.0; 2], [[1.0; 2]; 3]).unwrap();
+    let res = TwoDLookUpTable::new([3.0, 1.0, 2.0], [1.0; 2], [[1.0; 2]; 3]);
+
+    assert!(matches!(res.unwrap_err(), ConstructionError::IncreasingDimOrderError));
 }
 
 #[test]
-#[should_panic(expected = "At least two values should be provided for x and y axes")]
 fn when_x_or_y_values_are_single_element_arrays_dont_construct_object() {
-    TwoDLookUpTable::new([1.0], [0.0], [[0.0]; 1]).unwrap();
+    let res = TwoDLookUpTable::new([1.0], [0.0], [[0.0]; 1]);
+
+    assert!(matches!(res.unwrap_err(), ConstructionError::MinLengthError));
 }
 
 #[test]
-#[should_panic(expected = "Cannot create a Lookup Table containing NaNs or Infinities")]
 fn when_x_or_y_surface_values_contain_nans_or_infinities_dont_construct_object() {
-    TwoDLookUpTable::new([f64::NAN, 1.0, 2.0], [f64::NEG_INFINITY; 3], [[1.0; 3]; 3]).unwrap();
+    let res = TwoDLookUpTable::new([f64::NAN, 1.0, 2.0], [f64::NEG_INFINITY; 3], [[1.0; 3]; 3]);
+
+    assert!(matches!(res.unwrap_err(), ConstructionError::ContainingNansOrInfinities));
 }
 
 #[test]

@@ -41,7 +41,7 @@ impl<const N: usize> OneDLookUpTable<N> {
     /// ```
     ///  use look_up_table::{OneDLookUpTable, ConstructionError};
     ///  let lut = OneDLookUpTable::new([3.0, 1.0, 2.0], [1.0;3]);
-    ///  assert!(matches!(lut.err().unwrap(), ConstructionError::IncreasingXOrderError))
+    ///  assert!(matches!(lut.err().unwrap(), ConstructionError::IncreasingDimOrderError))
     /// ```
     ///
     /// If the `x` or `y` values contain NANs or Infinities

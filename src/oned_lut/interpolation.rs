@@ -1,5 +1,5 @@
 use crate::error::ConstructionError;
-use crate::error::ConstructionError::{ContainingNansOrInfinities, IncreasingXOrderError, MinLengthError};
+use crate::error::ConstructionError::{ContainingNansOrInfinities, IncreasingDimOrderError, MinLengthError};
 use crate::EPSILON;
 
 pub(super) type Key = (u64, i16, i8);
@@ -15,7 +15,7 @@ pub(in crate::oned_lut) fn is_object_constructible(xs: &[f64], ys: &[f64]) -> Re
     }
 
     if !xs.windows(2).all(|c| c[1] - c[0] > EPSILON) {
-        return Err(IncreasingXOrderError);
+        return Err(IncreasingDimOrderError);
     }
 
     Ok(true)
